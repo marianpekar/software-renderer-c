@@ -1,0 +1,43 @@
+﻿# CLion / IntelliJ
+.idea/
+cmake-build-*/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+build/
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Ninja build files
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# FetchContent / External projects
+_deps/
+
+# Windows build artifacts
+*.exe
+*.dll
+*.pdb
+*.lib
+*.exp
+
+# Linux / macOS build artifacts
+*.o
+*.so
+*.dylib
+*.a
+
+# Logs
+*.log
+
+# OS-specific junk
+.DS_Store
+Thumbs.db
+
