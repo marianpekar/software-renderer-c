@@ -1,27 +1,79 @@
-﻿#include <SDL3/SDL.h>
+﻿#include <stdio.h>
+#include <SDL3/SDL.h>
 
+#include "camera.h"
+#include "constants.h"
+#include "draw.h"
+#include "inputs.h"
+#include "mesh.h"
 #include "sdl_gfx.h"
 
+void apply_transformations(vec3* transformed, const vec3* original, const int count, const mat4x4* mat) {
+    for (int i = 0; i < count; i++) {
+        transformed[i] = mat4_mul_vec3(mat, original[i]);
+    }
+}
+
 int main(void) {
-    const int screenWidth = 800;
-    const int screenHeight = 600;
-    const sdl_gfx* gfx = sdl_gfx_init("Software Renderer", screenWidth, screenHeight);
+    const sdl_gfx* gfx = sdl_gfx_init("Software Renderer", SCREEN_WIDTH, SCREEN_HEIGHT);
 
     if (gfx == NULL) {
         return 1;
     }
 
-    bool running = true;
-    while (running) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_EVENT_QUIT) {
-                running = false;
-            }
-        }
+    const mesh mesh = make_cube();
+    const camera camera = make_camera((vec3){0.0f, 0.0f, -5.0f});
+
+    vec3 rotation = {0.0f, 180.0f, 0.0f};
+    vec3 translation = {0.0f, 0.0f, 0.0f};
+    float scale = 1.0f;
+
+    const int rend_modes_count = 2;
+    int render_mode = rend_modes_count - 1;
+    projection_type proj_type = PERSPECTIVE;
+
+    const mat4x4 perspective_mat = make_perspective_matrix(FOV, SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+    const mat4x4 ortho_mat = make_orthographic_matrix(SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+
+    Uint64 last_time = SDL_GetPerformanceCounter();
+
+    bool is_running = true;
+    while (is_running) {
+        const Uint64 current_time = SDL_GetPerformanceCounter();
+        const float delta_time = (float)(current_time - last_time)/(float)SDL_GetPerformanceFrequency();
+        last_time = current_time;
+
+        handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
+
+        const mat4x4 trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
+        const mat4x4 rot_mat = make_rotation_matrix(rotation.x, rotation.y, rotation.z);
+        const mat4x4 scale_mat = make_scale_matrix(scale, scale, scale);
+        const mat4x4 rs_mat = mat4_mul(&rot_mat, &scale_mat);
+        const mat4x4 model_mat = mat4_mul(&trans_mat, &rs_mat);
+        const mat4x4 view_mat = make_view_matrix(camera.position, camera.target);
+        const mat4x4 mv_mat = mat4_mul(&view_mat, &model_mat);
+
+        apply_transformations(mesh.transformedVertices, mesh.vertices, mesh.vertexCount, &mv_mat);
+        apply_transformations(mesh.transformedNormals, mesh.normals, mesh.normalCount, &mv_mat);
+
+        const mat4x4 proj_mat = (proj_type == PERSPECTIVE) ? perspective_mat : ortho_mat;
+
         sdl_gfx_clear(gfx, COLOR_BLACK);
+
+        switch (render_mode) {
+            case 1:
+                draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
+                break;
+            case 0:
+                draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
+                break;
+            default:
+                break;
+        }
+
         sdl_gfx_render(gfx);
     }
 
+    SDL_Quit();
     return 0;
 }

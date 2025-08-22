@@ -16,6 +16,12 @@ FetchContent_MakeAvailable(SDL3)
 add_executable(software_renderer_c
         main.c
         sdl_gfx.c
+        vectors.c
+        matrix.c
+        camera.c
+        mesh.c
+        draw.c
+        inputs.c
 )
 
 target_link_libraries(software_renderer_c PRIVATE SDL3::SDL3)

@@ -1,8 +1,7 @@
-﻿#include "sdl_gfx.h"
-
-#include <stdlib.h>
+﻿#include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "sdl_gfx.h"
 
 sdl_gfx * sdl_gfx_init(char window_title[], const int width, const int height) {
     sdl_gfx* gfx = malloc(sizeof(sdl_gfx));
@@ -38,6 +37,7 @@ sdl_gfx * sdl_gfx_init(char window_title[], const int width, const int height) {
         fprintf(stderr, "Failed to allocate buffer.\n");
         return NULL;
     }
+    gfx->bufferSize = width * height;
 
     return gfx;
 }
@@ -53,8 +53,11 @@ void sdl_gfx_render(const sdl_gfx *gfx) {
     SDL_RenderPresent(gfx->renderer);
 }
 
-void sdl_gfx_draw_pixel(const sdl_gfx *r, const int x, const int y, const uint32_t color) {
-    r->buffer[y * r->width + x] = color;
+void sdl_gfx_draw_pixel(const sdl_gfx *gfx, const int x, const int y, const uint32_t color) {
+    if (x < 0 || x >= gfx->width || y < 0 || y >= gfx->height)
+        return;
+
+    gfx->buffer[y * gfx->width + x] = color;
 }
 
 void sdl_gfx_clear(const sdl_gfx *gfx, const uint32_t color) {

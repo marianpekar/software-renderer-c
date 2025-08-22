@@ -10,6 +10,7 @@ typedef struct {
     SDL_Renderer* renderer;
     SDL_Texture* texture;
     uint32_t* buffer;
+    int bufferSize;
 } sdl_gfx;
 
 #define RED(color) ((color >> 16) & 0xFF)
@@ -22,7 +23,7 @@ typedef struct {
 
 sdl_gfx* sdl_gfx_init(char window_title[], int width, int height);
 void sdl_gfx_render(const sdl_gfx* gfx);
-void sdl_gfx_draw_pixel(const sdl_gfx* r, int x, int y, uint32_t color);
+void sdl_gfx_draw_pixel(const sdl_gfx* gfx, int x, int y, uint32_t color);
 void sdl_gfx_clear(const sdl_gfx* gfx, uint32_t color);
 void sdl_gfx_dispose(const sdl_gfx *gfx);
 
