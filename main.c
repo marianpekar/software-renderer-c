@@ -23,13 +23,14 @@ int main(void) {
     }
 
     const mesh mesh = make_cube();
-    const camera camera = make_camera((vec3){0.0f, 0.0f, -5.0f});
+    const camera camera = make_camera((vec3){0.0f, 0.0f, -3.0f});
+    const light light = make_light((vec3){0.0f, 0.0f, -3.0f}, (vec3){0.0f, 1.0f, 0.0f}, 1.0f);
 
     vec3 rotation = {0.0f, 180.0f, 0.0f};
     vec3 translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
-    const int rend_modes_count = 3;
+    const int rend_modes_count = 4;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
@@ -67,14 +68,17 @@ int main(void) {
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         switch (render_mode) {
+            case 3:
+                    draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                break;
             case 2:
-                    draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
+                          draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
                 break;
             case 1:
-                draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
+                      draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
                 break;
             case 0:
-                draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
+                      draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
                 break;
             default:
                 break;

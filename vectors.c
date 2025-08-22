@@ -49,6 +49,10 @@ void vec3_floor_xy(vec3 *v) {
     v->y = floorf(v->y);
 }
 
+vec3 vec3_diff(const vec3 v1, const vec3 v2) {
+    return (vec3){v1.x - v2.x, v1.y - v2.y, v1.z - v2.z};
+}
+
 vec2 vec2_diff(const vec2 v1, const vec2 v2) {
     return (vec2){v1.x - v2.x, v1.y - v2.y};
 }

@@ -77,6 +77,40 @@ void draw_unlit(const sdl_gfx *gfx, const vec3 *vertices, const triangle *tris, 
     }
 }
 
+void draw_flat_shaded(const sdl_gfx *gfx, const vec3 *vertices, const triangle *tris, const int tris_count, const uint32_t color, const light light, const mat4x4 *proj_mat, projection_type proj_type, z_buffer *z_buffer) {
+    for (int i = 0; i < tris_count; ++i) {
+        const triangle tri = tris[i];
+
+        const vec3 v1 = vertices[tri.v[0]];
+        const vec3 v2 = vertices[tri.v[1]];
+        const vec3 v3 = vertices[tri.v[2]];
+
+        const vec3 cross = vec3_cross(vec3_diff(v2, v1), vec3_diff(v3, v1));
+        const vec3 cross_norm = vec3_normalize(cross);
+        const vec3 to_camera = proj_type == PERSPECTIVE ? vec3_normalize(v1) : (vec3){0,0,-1};
+
+        // Backface culling
+        if (vec3_dot(cross_norm, to_camera) > 0.0f)
+            continue;
+
+        const vec3 p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3 p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3 p3 = project_to_screen(proj_type, proj_mat, v3);
+
+        if (is_outside_frustum(p1, p2, p3))
+            continue;
+
+        float intensity = vec3_dot(cross_norm, light.direction);
+        intensity = clamp(intensity, 0.0f, 1.0f);
+        intensity = clamp(AMBIENT_LIGHT_INTENSITY + intensity * light.strength, 0.0f, 1.0f);
+        const uint32_t r = RED(color) * intensity;
+        const uint32_t g = GREEN(color) * intensity;
+        const uint32_t b = BLUE(color) * intensity;
+
+        draw_filled_triangle(gfx, p1, p2, p3, RGB(r,g,b), z_buffer);
+    }
+}
+
 void draw_filled_triangle(const sdl_gfx *gfx, vec3 p1, vec3 p2, vec3 p3, const uint32_t color, z_buffer *z_buffer) {
     sort_points(&p1, &p2, &p3);
     vec3_floor_xy(&p1);
@@ -222,4 +256,9 @@ bool is_outside_frustum(const vec3 p1, const vec3 p2, const vec3 p3) {
 
 bool is_point_outside_viewport(const int x, const int y) {
     return x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT;
+}
+
+float clamp(const float value, const float min, const float max) {
+    const float t = value < min ? min : value;
+    return t > max ? max : t;
 }

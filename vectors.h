@@ -18,6 +18,7 @@ float fast_inverse_sqrt(float x);
 vec3  vec3_cross(vec3 v1, vec3 v2);
 float vec3_dot(vec3 v1, vec3 v2);
 void  vec3_floor_xy(vec3* v);
+vec3  vec3_diff(vec3 v1, vec3 v2);
 
 vec2  vec2_diff(vec2 v1, vec2 v2);
 vec2  vec2_from_vec3(vec3 v);

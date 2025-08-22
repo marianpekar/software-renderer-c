@@ -24,6 +24,7 @@ add_executable(software_renderer_c
         inputs.c
         z_buffer.c
         sort.c
+        light.c
 )
 
 target_link_libraries(software_renderer_c PRIVATE SDL3::SDL3)
