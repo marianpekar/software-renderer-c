@@ -4,8 +4,8 @@
 void handle_inputs(vec3* translation, vec3* rotation, float* scale, int* render_mode, const int rend_modes_count, projection_type *proj_type, bool* is_running, const float delta_time) {
     const bool* key_state = SDL_GetKeyboardState(NULL);
 
-    const float linear_step = (key_state[SDL_SCANCODE_LSHIFT] != 0) ? 0.25f : 1.0f * delta_time;
-    const float angular_step = (key_state[SDL_SCANCODE_LSHIFT] != 0) ? 12.0f : 48.0f * delta_time;
+    const float linear_step = (key_state[SDL_SCANCODE_LSHIFT] != 0) ? 0.25f * delta_time : 1.0f * delta_time;
+    const float angular_step = (key_state[SDL_SCANCODE_LSHIFT] != 0) ? 24.0f * delta_time : 48.0f * delta_time;
 
     // Translation
     if (key_state[SDL_SCANCODE_W]) translation->z += linear_step;

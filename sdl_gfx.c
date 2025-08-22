@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "sdl_gfx.h"
 
-sdl_gfx * sdl_gfx_init(char window_title[], const int width, const int height) {
+sdl_gfx* sdl_gfx_init(char window_title[], const int width, const int height) {
     sdl_gfx* gfx = malloc(sizeof(sdl_gfx));
 
     gfx->width = width;
@@ -42,7 +42,7 @@ sdl_gfx * sdl_gfx_init(char window_title[], const int width, const int height) {
     return gfx;
 }
 
-void sdl_gfx_render(const sdl_gfx *gfx) {
+void sdl_gfx_render(const sdl_gfx* gfx) {
     if (SDL_UpdateTexture(gfx->texture, NULL, gfx->buffer, gfx->width * 4) == false) {
         printf("Error updating texture: %s", SDL_GetError());
         return;
@@ -60,13 +60,13 @@ void sdl_gfx_draw_pixel(const sdl_gfx *gfx, const int x, const int y, const uint
     gfx->buffer[y * gfx->width + x] = color;
 }
 
-void sdl_gfx_clear(const sdl_gfx *gfx, const uint32_t color) {
+void sdl_gfx_clear(const sdl_gfx* gfx, const uint32_t color) {
     for (int i = 0; i < gfx->width*gfx->height; ++i) {
         gfx->buffer[i] = color;
     }
 }
 
-void sdl_gfx_dispose(const sdl_gfx *gfx) {
+void sdl_gfx_dispose(const sdl_gfx* gfx) {
     free(gfx->buffer);
     SDL_DestroyTexture(gfx->texture);
     SDL_DestroyRenderer(gfx->renderer);

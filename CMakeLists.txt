@@ -22,6 +22,8 @@ add_executable(software_renderer_c
         mesh.c
         draw.c
         inputs.c
+        z_buffer.c
+        sort.c
 )
 
 target_link_libraries(software_renderer_c PRIVATE SDL3::SDL3)

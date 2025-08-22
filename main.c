@@ -7,6 +7,7 @@
 #include "inputs.h"
 #include "mesh.h"
 #include "sdl_gfx.h"
+#include "z_buffer.h"
 
 void apply_transformations(vec3* transformed, const vec3* original, const int count, const mat4x4* mat) {
     for (int i = 0; i < count; i++) {
@@ -28,12 +29,14 @@ int main(void) {
     vec3 translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
-    const int rend_modes_count = 2;
+    const int rend_modes_count = 3;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
     const mat4x4 perspective_mat = make_perspective_matrix(FOV, SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
     const mat4x4 ortho_mat = make_orthographic_matrix(SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+
+    z_buffer* z_buffer = make_z_buffer();
 
     Uint64 last_time = SDL_GetPerformanceCounter();
 
@@ -46,21 +49,27 @@ int main(void) {
         handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
 
         const mat4x4 trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
-        const mat4x4 rot_mat = make_rotation_matrix(rotation.x, rotation.y, rotation.z);
+        const mat4x4 rot_mat =   make_rotation_matrix(rotation.x, rotation.y, rotation.z);
         const mat4x4 scale_mat = make_scale_matrix(scale, scale, scale);
-        const mat4x4 rs_mat = mat4_mul(&rot_mat, &scale_mat);
+
+        const mat4x4 rs_mat =    mat4_mul(&rot_mat, &scale_mat);
         const mat4x4 model_mat = mat4_mul(&trans_mat, &rs_mat);
-        const mat4x4 view_mat = make_view_matrix(camera.position, camera.target);
-        const mat4x4 mv_mat = mat4_mul(&view_mat, &model_mat);
+        const mat4x4 view_mat =  make_view_matrix(camera.position, camera.target);
+        const mat4x4 mv_mat =    mat4_mul(&view_mat, &model_mat);
 
         apply_transformations(mesh.transformedVertices, mesh.vertices, mesh.vertexCount, &mv_mat);
         apply_transformations(mesh.transformedNormals, mesh.normals, mesh.normalCount, &mv_mat);
 
         const mat4x4 proj_mat = (proj_type == PERSPECTIVE) ? perspective_mat : ortho_mat;
 
+        clear_z_buffer(z_buffer);
+
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         switch (render_mode) {
+            case 2:
+                    draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
+                break;
             case 1:
                 draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
                 break;
