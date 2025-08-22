@@ -5,38 +5,38 @@
 
 void draw_wireframe(
     const sdl_gfx* gfx,
-    const vec3 *vertices,
-    const triangle *tris,
+    const vec3_t *vertices,
+    const triangle_t *tris,
     const int tris_count,
     const uint32_t color,
-    const mat4x4* proj_mat,
+    const mat4x4_t* proj_mat,
     const projection_type proj_type,
     const bool cull_back_face
     ) {
     for (int i = 0; i < tris_count; ++i) {
-        const triangle tri = tris[i];
+        const triangle_t tri = tris[i];
 
-        const vec3 v1 = vertices[tri.v[0]];
-        const vec3 v2 = vertices[tri.v[1]];
-        const vec3 v3 = vertices[tri.v[2]];
+        const vec3_t v1 = vertices[tri.v[0]];
+        const vec3_t v2 = vertices[tri.v[1]];
+        const vec3_t v3 = vertices[tri.v[2]];
 
         if (cull_back_face && is_back_face(proj_type, v1, v2, v3))
             continue;
 
-        const vec3 p1 = project_to_screen(proj_type, proj_mat, v1);
-        const vec3 p2 = project_to_screen(proj_type, proj_mat, v2);
-        const vec3 p3 = project_to_screen(proj_type, proj_mat, v3);
+        const vec3_t p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3_t p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3_t p3 = project_to_screen(proj_type, proj_mat, v3);
 
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        draw_line(gfx, (vec2){p1.x, p1.y}, (vec2){p2.x, p2.y}, color);
-        draw_line(gfx, (vec2){p2.x, p2.y}, (vec2){p3.x, p3.y}, color);
-        draw_line(gfx, (vec2){p3.x, p3.y}, (vec2){p1.x, p1.y}, color);
+        draw_line(gfx, (vec2_t){p1.x, p1.y}, (vec2_t){p2.x, p2.y}, color);
+        draw_line(gfx, (vec2_t){p2.x, p2.y}, (vec2_t){p3.x, p3.y}, color);
+        draw_line(gfx, (vec2_t){p3.x, p3.y}, (vec2_t){p1.x, p1.y}, color);
     }
 }
 
-void draw_line(const sdl_gfx* gfx, const vec2 a, const vec2 b, const uint32_t color) {
+void draw_line(const sdl_gfx* gfx, const vec2_t a, const vec2_t b, const uint32_t color) {
     const float d_x = b.x - a.x;
     const float d_y = b.y - a.y;
 
@@ -55,20 +55,20 @@ void draw_line(const sdl_gfx* gfx, const vec2 a, const vec2 b, const uint32_t co
     }
 }
 
-void draw_unlit(const sdl_gfx *gfx, const vec3 *vertices, const triangle *tris, int tris_count, uint32_t color, const mat4x4 *proj_mat, projection_type proj_type, z_buffer *z_buffer) {
+void draw_unlit(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tris, int tris_count, uint32_t color, const mat4x4_t *proj_mat, projection_type proj_type, z_buffer_t *z_buffer) {
     for (int i = 0; i < tris_count; ++i) {
-        const triangle tri = tris[i];
+        const triangle_t tri = tris[i];
 
-        const vec3 v1 = vertices[tri.v[0]];
-        const vec3 v2 = vertices[tri.v[1]];
-        const vec3 v3 = vertices[tri.v[2]];
+        const vec3_t v1 = vertices[tri.v[0]];
+        const vec3_t v2 = vertices[tri.v[1]];
+        const vec3_t v3 = vertices[tri.v[2]];
 
         if (is_back_face(proj_type, v1, v2, v3))
             continue;
 
-        const vec3 p1 = project_to_screen(proj_type, proj_mat, v1);
-        const vec3 p2 = project_to_screen(proj_type, proj_mat, v2);
-        const vec3 p3 = project_to_screen(proj_type, proj_mat, v3);
+        const vec3_t p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3_t p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3_t p3 = project_to_screen(proj_type, proj_mat, v3);
 
         if (is_outside_frustum(p1, p2, p3))
             continue;
@@ -77,25 +77,25 @@ void draw_unlit(const sdl_gfx *gfx, const vec3 *vertices, const triangle *tris, 
     }
 }
 
-void draw_flat_shaded(const sdl_gfx *gfx, const vec3 *vertices, const triangle *tris, const int tris_count, const uint32_t color, const light light, const mat4x4 *proj_mat, projection_type proj_type, z_buffer *z_buffer) {
+void draw_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t *proj_mat, projection_type proj_type, z_buffer_t *z_buffer) {
     for (int i = 0; i < tris_count; ++i) {
-        const triangle tri = tris[i];
+        const triangle_t tri = tris[i];
 
-        const vec3 v1 = vertices[tri.v[0]];
-        const vec3 v2 = vertices[tri.v[1]];
-        const vec3 v3 = vertices[tri.v[2]];
+        const vec3_t v1 = vertices[tri.v[0]];
+        const vec3_t v2 = vertices[tri.v[1]];
+        const vec3_t v3 = vertices[tri.v[2]];
 
-        const vec3 cross = vec3_cross(vec3_diff(v2, v1), vec3_diff(v3, v1));
-        const vec3 cross_norm = vec3_normalize(cross);
-        const vec3 to_camera = proj_type == PERSPECTIVE ? vec3_normalize(v1) : (vec3){0,0,-1};
+        const vec3_t cross = vec3_cross(vec3_diff(v2, v1), vec3_diff(v3, v1));
+        const vec3_t cross_norm = vec3_normalize(cross);
+        const vec3_t to_camera = proj_type == PERSPECTIVE ? vec3_normalize(v1) : (vec3_t){0,0,-1};
 
         // Backface culling
         if (vec3_dot(cross_norm, to_camera) > 0.0f)
             continue;
 
-        const vec3 p1 = project_to_screen(proj_type, proj_mat, v1);
-        const vec3 p2 = project_to_screen(proj_type, proj_mat, v2);
-        const vec3 p3 = project_to_screen(proj_type, proj_mat, v3);
+        const vec3_t p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3_t p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3_t p3 = project_to_screen(proj_type, proj_mat, v3);
 
         if (is_outside_frustum(p1, p2, p3))
             continue;
@@ -111,7 +111,7 @@ void draw_flat_shaded(const sdl_gfx *gfx, const vec3 *vertices, const triangle *
     }
 }
 
-void draw_filled_triangle(const sdl_gfx *gfx, vec3 p1, vec3 p2, vec3 p3, const uint32_t color, z_buffer *z_buffer) {
+void draw_filled_triangle(const sdl_gfx *gfx, vec3_t p1, vec3_t p2, vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
     sort_points(&p1, &p2, &p3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -160,16 +160,16 @@ void draw_filled_triangle(const sdl_gfx *gfx, vec3 p1, vec3 p2, vec3 p3, const u
     }
 }
 
-void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3 p1, const vec3 p2, const vec3 p3, const uint32_t color, z_buffer *z_buffer) {
+void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
     if (is_point_outside_viewport(x, y))
         return;
 
-    const vec2 p = (vec2){(float)x, (float)y};
-    const vec2 p1_xy = vec2_from_vec3(p1);
-    const vec2 p2_xy = vec2_from_vec3(p2);
-    const vec2 p3_xy = vec2_from_vec3(p3);
+    const vec2_t p = (vec2_t){(float)x, (float)y};
+    const vec2_t p1_xy = vec2_from_vec3(p1);
+    const vec2_t p2_xy = vec2_from_vec3(p2);
+    const vec2_t p3_xy = vec2_from_vec3(p3);
 
-    const vec3 weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
+    const vec3_t weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
 
     const float alpha = weights.x;
     const float beta  = weights.y;
@@ -184,8 +184,8 @@ void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3 p1, con
     }
 }
 
-vec3 project_to_screen(const projection_type proj_type, const mat4x4* mat, const vec3 v) {
-    const vec4 clip = mat4x4_mul_vec4(mat, (vec4){v.x, v.y, v.z, 1.0f});
+vec3_t project_to_screen(const projection_type proj_type, const mat4x4_t* mat, const vec3_t v) {
+    const vec4_t clip = mat4x4_mul_vec4(mat, (vec4_t){v.x, v.y, v.z, 1.0f});
     const float inv_w = 1.0f / clip.w;
 
     const float ndc_x = clip.x * inv_w;
@@ -195,51 +195,51 @@ vec3 project_to_screen(const projection_type proj_type, const mat4x4* mat, const
     const float screen_y = (-ndc_y * 0.5f + 0.5f) * SCREEN_HEIGHT;
 
     if (proj_type == PERSPECTIVE) {
-        return (vec3){screen_x, screen_y, inv_w};
+        return (vec3_t){screen_x, screen_y, inv_w};
     }
 
-    return (vec3){screen_x, screen_y, -clip.z};
+    return (vec3_t){screen_x, screen_y, -clip.z};
 }
 
-vec3 barycentric_weights(const vec2 a, const vec2 b, const vec2 c, const vec2 p) {
-    const vec2 ac = vec2_diff(c, a);
-    const vec2 ab = vec2_diff(b, a);
-    const vec2 ap = vec2_diff(p, a);
-    const vec2 pc = vec2_diff(c, p);
-    const vec2 pb = vec2_diff(b, p);
+vec3_t barycentric_weights(const vec2_t a, const vec2_t b, const vec2_t c, const vec2_t p) {
+    const vec2_t ac = vec2_diff(c, a);
+    const vec2_t ab = vec2_diff(b, a);
+    const vec2_t ap = vec2_diff(p, a);
+    const vec2_t pc = vec2_diff(c, p);
+    const vec2_t pb = vec2_diff(b, p);
 
     const float area = ac.x * ab.y - ac.y * ab.x;
 
     if (area <= 0.0f) {
-        return (vec3){0.0f, 0.0f, 0.0f};
+        return (vec3_t){0.0f, 0.0f, 0.0f};
     }
 
     const float alpha = (pc.x * pb.y - pc.y * pb.x) / area;
     const float beta  = (ac.x * ap.y - ac.y * ap.x) / area;
     const float gamma = 1.0f - alpha - beta;
 
-    return (vec3){alpha, beta, gamma};
+    return (vec3_t){alpha, beta, gamma};
 }
 
-bool is_back_face(const projection_type proj_type, const vec3 v1, const vec3 v2, const vec3 v3) {
-    const vec3 edge1 = {v2.x - v1.x, v2.y - v1.y, v2.z - v1.z};
-    const vec3 edge2 = {v3.x - v1.x, v3.y - v1.y, v3.z - v1.z};
+bool is_back_face(const projection_type proj_type, const vec3_t v1, const vec3_t v2, const vec3_t v3) {
+    const vec3_t edge1 = {v2.x - v1.x, v2.y - v1.y, v2.z - v1.z};
+    const vec3_t edge2 = {v3.x - v1.x, v3.y - v1.y, v3.z - v1.z};
 
-    const vec3 cross = vec3_cross(edge1, edge2);
-    const vec3 cross_norm = vec3_normalize(cross);
+    const vec3_t cross = vec3_cross(edge1, edge2);
+    const vec3_t cross_norm = vec3_normalize(cross);
 
-    vec3 to_camera;
+    vec3_t to_camera;
     if (proj_type == PERSPECTIVE) {
         to_camera = vec3_normalize(v1);
     }
     else {
-        to_camera = (vec3){0.0f, 0.0f, -1.0f};
+        to_camera = (vec3_t){0.0f, 0.0f, -1.0f};
     }
 
     return vec3_dot(cross_norm, to_camera) >= 0.0f;
 }
 
-bool is_outside_frustum(const vec3 p1, const vec3 p2, const vec3 p3) {
+bool is_outside_frustum(const vec3_t p1, const vec3_t p2, const vec3_t p3) {
     if (p1.z > 1.0f || p2.z > 1.0f || p3.z > 1.0f || p1.z < -1.0f || p2.z < -1.0f || p3.z < -1.0f)
         return true;
 

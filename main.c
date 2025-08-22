@@ -9,7 +9,7 @@
 #include "sdl_gfx.h"
 #include "z_buffer.h"
 
-void apply_transformations(vec3* transformed, const vec3* original, const int count, const mat4x4* mat) {
+void apply_transformations(vec3_t* transformed, const vec3_t* original, const int count, const mat4x4_t* mat) {
     for (int i = 0; i < count; i++) {
         transformed[i] = mat4_mul_vec3(mat, original[i]);
     }
@@ -22,22 +22,22 @@ int main(void) {
         return 1;
     }
 
-    const mesh mesh = make_cube();
-    const camera camera = make_camera((vec3){0.0f, 0.0f, -3.0f});
-    const light light = make_light((vec3){0.0f, 0.0f, -3.0f}, (vec3){0.0f, 1.0f, 0.0f}, 1.0f);
+    const mesh_t mesh = make_cube();
+    const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
+    const light_t light = make_light((vec3_t){0.0f, 0.0f, -3.0f}, (vec3_t){0.0f, 1.0f, 0.0f}, 1.0f);
 
-    vec3 rotation = {0.0f, 180.0f, 0.0f};
-    vec3 translation = {0.0f, 0.0f, 0.0f};
+    vec3_t rotation = {0.0f, 180.0f, 0.0f};
+    vec3_t translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
     const int rend_modes_count = 4;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
-    const mat4x4 perspective_mat = make_perspective_matrix(FOV, SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
-    const mat4x4 ortho_mat = make_orthographic_matrix(SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+    const mat4x4_t perspective_mat = make_perspective_matrix(FOV, SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
+    const mat4x4_t ortho_mat = make_orthographic_matrix(SCREEN_WIDTH, SCREEN_HEIGHT, NEAR_PLANE, FAR_PLANE);
 
-    z_buffer* z_buffer = make_z_buffer();
+    z_buffer_t* z_buffer = make_z_buffer();
 
     Uint64 last_time = SDL_GetPerformanceCounter();
 
@@ -49,19 +49,19 @@ int main(void) {
 
         handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
 
-        const mat4x4 trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
-        const mat4x4 rot_mat =   make_rotation_matrix(rotation.x, rotation.y, rotation.z);
-        const mat4x4 scale_mat = make_scale_matrix(scale, scale, scale);
+        const mat4x4_t trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
+        const mat4x4_t rot_mat =   make_rotation_matrix(rotation.x, rotation.y, rotation.z);
+        const mat4x4_t scale_mat = make_scale_matrix(scale, scale, scale);
 
-        const mat4x4 rs_mat =    mat4_mul(&rot_mat, &scale_mat);
-        const mat4x4 model_mat = mat4_mul(&trans_mat, &rs_mat);
-        const mat4x4 view_mat =  make_view_matrix(camera.position, camera.target);
-        const mat4x4 mv_mat =    mat4_mul(&view_mat, &model_mat);
+        const mat4x4_t rs_mat =    mat4_mul(&rot_mat, &scale_mat);
+        const mat4x4_t model_mat = mat4_mul(&trans_mat, &rs_mat);
+        const mat4x4_t view_mat =  make_view_matrix(camera.position, camera.target);
+        const mat4x4_t mv_mat =    mat4_mul(&view_mat, &model_mat);
 
         apply_transformations(mesh.transformedVertices, mesh.vertices, mesh.vertexCount, &mv_mat);
         apply_transformations(mesh.transformedNormals, mesh.normals, mesh.normalCount, &mv_mat);
 
-        const mat4x4 proj_mat = (proj_type == PERSPECTIVE) ? perspective_mat : ortho_mat;
+        const mat4x4_t proj_mat = (proj_type == PERSPECTIVE) ? perspective_mat : ortho_mat;
 
         clear_z_buffer(z_buffer);
 

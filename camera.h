@@ -4,10 +4,10 @@
 #include "vectors.h"
 
 typedef struct {
-    vec3 position;
-    vec3 target;
-} camera;
+    vec3_t position;
+    vec3_t target;
+} camera_t;
 
-camera make_camera(vec3 position);
+camera_t make_camera(vec3_t position);
 
 #endif //SOFTWARE_RENDERER_C_CAMERA_H

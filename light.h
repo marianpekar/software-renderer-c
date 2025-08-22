@@ -4,11 +4,11 @@
 #include "vectors.h"
 
 typedef struct {
-    vec3 position;
-    vec3 direction;
+    vec3_t position;
+    vec3_t direction;
     float strength;
-} light;
+} light_t;
 
-light make_light(vec3 position, vec3 direction, float strength);
+light_t make_light(vec3_t position, vec3_t direction, float strength);
 
 #endif //SOFTWARE_RENDERER_C_LIGHT_H

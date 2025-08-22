@@ -3,9 +3,9 @@
 
 #include "constants.h"
 
-typedef float z_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
+typedef float z_buffer_t[SCREEN_WIDTH * SCREEN_HEIGHT];
 
-void        clear_z_buffer(z_buffer* z_buffer);
-z_buffer*   make_z_buffer();
+void        clear_z_buffer(z_buffer_t* z_buffer);
+z_buffer_t* make_z_buffer();
 
 #endif //SOFTWARE_RENDERER_C_Z_BUFFER_H

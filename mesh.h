@@ -7,22 +7,22 @@ typedef struct {
     int v[3];
     int uv[3];
     int n[3];
-} triangle;
+} triangle_t;
 
 typedef struct {
-    vec3* transformedVertices;
-    vec3* transformedNormals;
-    vec3* vertices;
-    vec3* normals;
-    vec2* uvs;
-    triangle* triangles;
+    vec3_t* transformedVertices;
+    vec3_t* transformedNormals;
+    vec3_t* vertices;
+    vec3_t* normals;
+    vec2_t* uvs;
+    triangle_t* triangles;
 
     int vertexCount;
     int normalCount;
     int uvCount;
     int triangleCount;
-} mesh;
+} mesh_t;
 
-mesh make_cube(void);
+mesh_t make_cube(void);
 
 #endif //SOFTWARE_RENDERER_C_MESH_H
