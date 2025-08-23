@@ -22,7 +22,8 @@ int main(void) {
         return 1;
     }
 
-    const mesh_t mesh = make_cube();
+    //const mesh_t mesh = make_cube();
+    const mesh_t mesh = load_mesh_from_obj("./assets/monkey.obj");
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
     const light_t light = make_light((vec3_t){0.0f, 0.0f, -3.0f}, (vec3_t){0.0f, 1.0f, 0.0f}, 1.0f);
 
@@ -50,13 +51,13 @@ int main(void) {
         handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
 
         const mat4x4_t trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
-        const mat4x4_t rot_mat =   make_rotation_matrix(rotation.x, rotation.y, rotation.z);
+        const mat4x4_t rot_mat   = make_rotation_matrix(rotation.x, rotation.y, rotation.z);
         const mat4x4_t scale_mat = make_scale_matrix(scale, scale, scale);
 
-        const mat4x4_t rs_mat =    mat4_mul(&rot_mat, &scale_mat);
+        const mat4x4_t rs_mat    = mat4_mul(&rot_mat, &scale_mat);
         const mat4x4_t model_mat = mat4_mul(&trans_mat, &rs_mat);
-        const mat4x4_t view_mat =  make_view_matrix(camera.position, camera.target);
-        const mat4x4_t mv_mat =    mat4_mul(&view_mat, &model_mat);
+        const mat4x4_t view_mat  = make_view_matrix(camera.position, camera.target);
+        const mat4x4_t mv_mat    = mat4_mul(&view_mat, &model_mat);
 
         apply_transformations(mesh.transformedVertices, mesh.vertices, mesh.vertexCount, &mv_mat);
         apply_transformations(mesh.transformedNormals, mesh.normals, mesh.normalCount, &mv_mat);
@@ -87,6 +88,6 @@ int main(void) {
         sdl_gfx_render(gfx);
     }
 
-    SDL_Quit();
+    sdl_gfx_dispose(gfx);
     return 0;
 }

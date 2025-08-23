@@ -24,5 +24,6 @@ typedef struct {
 } mesh_t;
 
 mesh_t make_cube(void);
+mesh_t load_mesh_from_obj(const char* filename);
 
 #endif //SOFTWARE_RENDERER_C_MESH_H

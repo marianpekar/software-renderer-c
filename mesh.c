@@ -1,5 +1,105 @@
 ﻿#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "mesh.h"
+
+#define LINE_MAX 512
+
+static void parse_face(const char** tokens, triangle_t* tri) {
+    for (int i = 0; i < 3; i++) {
+        int v = 0, vt = 0, vn = 0;
+        sscanf(tokens[i+1], "%d/%d/%d", &v, &vt, &vn);
+        tri->v[i] = v - 1;
+        tri->uv[i] = vt - 1;
+        tri->n[i] = vn - 1;
+    }
+}
+
+static vec2_t parse_vec2(const char** tokens) {
+    vec2_t v;
+    v.x = strtof(tokens[1], NULL);
+    v.y = strtof(tokens[2], NULL);
+    return v;
+}
+
+static vec3_t parse_vec3(const char** tokens) {
+    vec3_t v;
+    v.x = strtof(tokens[1], NULL);
+    v.y = strtof(tokens[2], NULL);
+    v.z = strtof(tokens[3], NULL);
+    return v;
+}
+
+mesh_t load_mesh_from_obj(const char* filename) {
+    FILE* f = fopen(filename, "r");
+    if (!f) {
+        fprintf(stderr, "Failed to read file %s\n", filename);
+        exit(1);
+    }
+
+    vec3_t* vertices = NULL;
+    vec3_t* normals = NULL;
+    vec2_t* uvs = NULL;
+    triangle_t* triangles = NULL;
+    int v_count = 0, n_count = 0, uv_count = 0, t_count = 0;
+
+    char line[LINE_MAX];
+    while (fgets(line, LINE_MAX, f)) {
+        if (line[0] == '#') continue;
+        const char* tokens[8];
+        int tok_count = 0;
+
+        const char* token = strtok(line, " \t\r\n");
+        while (token && tok_count < 8) {
+            tokens[tok_count++] = token;
+            token = strtok(NULL, " \t\r\n");
+        }
+        if (tok_count == 0)
+            continue;
+
+        switch (tokens[0][0]) {
+            case 'v':
+                if (tokens[0][1] == '\0') {
+                    vertices = realloc(vertices, (v_count+1) * sizeof(vec3_t));
+                    vertices[v_count++] = parse_vec3(tokens);
+                } else if (tokens[0][1] == 'n' && tokens[0][2] == '\0') {
+                    normals = realloc(normals, (n_count+1) * sizeof(vec3_t));
+                    normals[n_count++] = parse_vec3(tokens);
+                } else if (tokens[0][1] == 't' && tokens[0][2] == '\0') {
+                    uvs = realloc(uvs, (uv_count+1) * sizeof(vec2_t));
+                    uvs[uv_count++] = parse_vec2(tokens);
+                }
+                break;
+
+            case 'f':
+                if (tokens[0][1] == '\0') {
+                    triangles = realloc(triangles, (t_count+1) * sizeof(triangle_t));
+                    parse_face(tokens, &triangles[t_count]);
+                    t_count++;
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+    fclose(f);
+
+    mesh_t mesh = {0};
+    mesh.vertexCount   = v_count;
+    mesh.normalCount   = n_count;
+    mesh.uvCount       = uv_count;
+    mesh.triangleCount = t_count;
+
+    mesh.vertices            = vertices;
+    mesh.normals             = normals;
+    mesh.uvs                 = uvs;
+    mesh.triangles           = triangles;
+    mesh.transformedVertices = calloc(v_count, sizeof(vec3_t));
+    mesh.transformedNormals  = calloc(n_count, sizeof(vec3_t));
+
+    return mesh;
+}
 
 mesh_t make_cube(void) {
     mesh_t mesh = {0};
