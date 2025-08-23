@@ -3,6 +3,85 @@
 #include "constants.h"
 #include "sort.h"
 
+static vec3_t project_to_screen(const projection_type proj_type, const mat4x4_t* mat, const vec3_t v) {
+    const vec4_t clip = mat4x4_mul_vec4(mat, (vec4_t){v.x, v.y, v.z, 1.0f});
+    const float inv_w = 1.0f / clip.w;
+
+    const float ndc_x = clip.x * inv_w;
+    const float ndc_y = clip.y * inv_w;
+
+    const float screen_x = (ndc_x * 0.5f + 0.5f) * SCREEN_WIDTH;
+    const float screen_y = (-ndc_y * 0.5f + 0.5f) * SCREEN_HEIGHT;
+
+    if (proj_type == PERSPECTIVE) {
+        return (vec3_t){screen_x, screen_y, inv_w};
+    }
+
+    return (vec3_t){screen_x, screen_y, -clip.z};
+}
+
+static vec3_t barycentric_weights(const vec2_t a, const vec2_t b, const vec2_t c, const vec2_t p) {
+    const vec2_t ac = vec2_diff(c, a);
+    const vec2_t ab = vec2_diff(b, a);
+    const vec2_t ap = vec2_diff(p, a);
+    const vec2_t pc = vec2_diff(c, p);
+    const vec2_t pb = vec2_diff(b, p);
+
+    const float area = ac.x * ab.y - ac.y * ab.x;
+
+    if (area <= 0.0f) {
+        return (vec3_t){0.0f, 0.0f, 0.0f};
+    }
+
+    const float alpha = (pc.x * pb.y - pc.y * pb.x) / area;
+    const float beta  = (ac.x * ap.y - ac.y * ap.x) / area;
+    const float gamma = 1.0f - alpha - beta;
+
+    return (vec3_t){alpha, beta, gamma};
+}
+
+static bool is_back_face(const projection_type proj_type, const vec3_t v1, const vec3_t v2, const vec3_t v3) {
+    const vec3_t edge1 = {v2.x - v1.x, v2.y - v1.y, v2.z - v1.z};
+    const vec3_t edge2 = {v3.x - v1.x, v3.y - v1.y, v3.z - v1.z};
+
+    const vec3_t cross = vec3_cross(edge1, edge2);
+    const vec3_t cross_norm = vec3_normalize(cross);
+
+    vec3_t to_camera;
+    if (proj_type == PERSPECTIVE) {
+        to_camera = vec3_normalize(v1);
+    }
+    else {
+        to_camera = (vec3_t){0.0f, 0.0f, -1.0f};
+    }
+
+    return vec3_dot(cross_norm, to_camera) >= 0.0f;
+}
+
+static bool is_outside_frustum(const vec3_t p1, const vec3_t p2, const vec3_t p3) {
+    if (p1.z > 1.0f || p2.z > 1.0f || p3.z > 1.0f || p1.z < -1.0f || p2.z < -1.0f || p3.z < -1.0f)
+        return true;
+
+    const float min_x = fminf(p1.x, fminf(p2.x, p3.x));
+    const float max_x = fmaxf(p1.x, fmaxf(p2.x, p3.x));
+    const float min_y = fminf(p1.y, fminf(p2.y, p3.y));
+    const float max_y = fmaxf(p1.y, fmaxf(p2.y, p3.y));
+
+    if (max_x < 0.0f || min_x > SCREEN_WIDTH || max_y < 0.0f || min_y > SCREEN_HEIGHT)
+        return true;
+
+    return false;
+}
+
+static bool is_point_outside_viewport(const int x, const int y) {
+    return x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT;
+}
+
+static float clamp(const float value, const float min, const float max) {
+    const float t = value < min ? min : value;
+    return t > max ? max : t;
+}
+
 void draw_wireframe(
     const sdl_gfx* gfx,
     const vec3_t *vertices,
@@ -182,83 +261,4 @@ void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3_t p1, c
         sdl_gfx_draw_pixel(gfx, x, y, color);
         (*z_buffer)[z_index] = depth;
     }
-}
-
-vec3_t project_to_screen(const projection_type proj_type, const mat4x4_t* mat, const vec3_t v) {
-    const vec4_t clip = mat4x4_mul_vec4(mat, (vec4_t){v.x, v.y, v.z, 1.0f});
-    const float inv_w = 1.0f / clip.w;
-
-    const float ndc_x = clip.x * inv_w;
-    const float ndc_y = clip.y * inv_w;
-
-    const float screen_x = (ndc_x * 0.5f + 0.5f) * SCREEN_WIDTH;
-    const float screen_y = (-ndc_y * 0.5f + 0.5f) * SCREEN_HEIGHT;
-
-    if (proj_type == PERSPECTIVE) {
-        return (vec3_t){screen_x, screen_y, inv_w};
-    }
-
-    return (vec3_t){screen_x, screen_y, -clip.z};
-}
-
-vec3_t barycentric_weights(const vec2_t a, const vec2_t b, const vec2_t c, const vec2_t p) {
-    const vec2_t ac = vec2_diff(c, a);
-    const vec2_t ab = vec2_diff(b, a);
-    const vec2_t ap = vec2_diff(p, a);
-    const vec2_t pc = vec2_diff(c, p);
-    const vec2_t pb = vec2_diff(b, p);
-
-    const float area = ac.x * ab.y - ac.y * ab.x;
-
-    if (area <= 0.0f) {
-        return (vec3_t){0.0f, 0.0f, 0.0f};
-    }
-
-    const float alpha = (pc.x * pb.y - pc.y * pb.x) / area;
-    const float beta  = (ac.x * ap.y - ac.y * ap.x) / area;
-    const float gamma = 1.0f - alpha - beta;
-
-    return (vec3_t){alpha, beta, gamma};
-}
-
-bool is_back_face(const projection_type proj_type, const vec3_t v1, const vec3_t v2, const vec3_t v3) {
-    const vec3_t edge1 = {v2.x - v1.x, v2.y - v1.y, v2.z - v1.z};
-    const vec3_t edge2 = {v3.x - v1.x, v3.y - v1.y, v3.z - v1.z};
-
-    const vec3_t cross = vec3_cross(edge1, edge2);
-    const vec3_t cross_norm = vec3_normalize(cross);
-
-    vec3_t to_camera;
-    if (proj_type == PERSPECTIVE) {
-        to_camera = vec3_normalize(v1);
-    }
-    else {
-        to_camera = (vec3_t){0.0f, 0.0f, -1.0f};
-    }
-
-    return vec3_dot(cross_norm, to_camera) >= 0.0f;
-}
-
-bool is_outside_frustum(const vec3_t p1, const vec3_t p2, const vec3_t p3) {
-    if (p1.z > 1.0f || p2.z > 1.0f || p3.z > 1.0f || p1.z < -1.0f || p2.z < -1.0f || p3.z < -1.0f)
-        return true;
-
-    const float min_x = fminf(p1.x, fminf(p2.x, p3.x));
-    const float max_x = fmaxf(p1.x, fmaxf(p2.x, p3.x));
-    const float min_y = fminf(p1.y, fminf(p2.y, p3.y));
-    const float max_y = fmaxf(p1.y, fmaxf(p2.y, p3.y));
-
-    if (max_x < 0.0f || min_x > SCREEN_WIDTH || max_y < 0.0f || min_y > SCREEN_HEIGHT)
-        return true;
-
-    return false;
-}
-
-bool is_point_outside_viewport(const int x, const int y) {
-    return x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT;
-}
-
-float clamp(const float value, const float min, const float max) {
-    const float t = value < min ? min : value;
-    return t > max ? max : t;
 }
