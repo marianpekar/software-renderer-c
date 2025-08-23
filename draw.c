@@ -29,7 +29,7 @@ static vec3_t barycentric_weights(const vec2_t a, const vec2_t b, const vec2_t c
 
     const float area = ac.x * ab.y - ac.y * ab.x;
 
-    if (area <= 0.0f) {
+    if (area == 0.0f) {
         return (vec3_t){0.0f, 0.0f, 0.0f};
     }
 
@@ -254,7 +254,7 @@ void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3_t p1, c
     const float beta  = weights.y;
     const float gamma = weights.z;
 
-    const float depth  = alpha*p1.z + beta*p2.z + gamma*p3.z;
+    const float depth = 1.0f / (alpha*p1.z + beta*p2.z + gamma*p3.z);
 
     const int z_index = SCREEN_WIDTH * y + x;
     if (depth <= (*z_buffer)[z_index]) {
