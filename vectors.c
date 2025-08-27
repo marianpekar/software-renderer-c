@@ -53,6 +53,14 @@ vec3_t vec3_diff(const vec3_t v1, const vec3_t v2) {
     return (vec3_t){v1.x - v2.x, v1.y - v2.y, v1.z - v2.z};
 }
 
+vec3_t vec3_add(const vec3_t v1, const vec3_t v2) {
+    return (vec3_t){v1.x + v2.x, v1.y + v2.y, v1.z + v2.z};
+}
+
+vec3_t vec3_mul(const vec3_t v, const float s) {
+    return (vec3_t){v.x * s, v.y * s, v.z * s};
+}
+
 vec2_t vec2_diff(const vec2_t v1, const vec2_t v2) {
     return (vec2_t){v1.x - v2.x, v1.y - v2.y};
 }

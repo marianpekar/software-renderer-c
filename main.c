@@ -31,7 +31,7 @@ int main(void) {
     vec3_t translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
-    const int rend_modes_count = 4;
+    const int rend_modes_count = 5;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
@@ -69,6 +69,9 @@ int main(void) {
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         switch (render_mode) {
+            case 4:
+                   draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                break;
             case 3:
                     draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
                 break;

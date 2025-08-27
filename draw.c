@@ -82,6 +82,205 @@ static float clamp(const float value, const float min, const float max) {
     return t > max ? max : t;
 }
 
+static void draw_pixel(const sdl_gfx *gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
+    if (is_point_outside_viewport((int)x, (int)y))
+        return;
+
+    const vec2_t p = (vec2_t){(float)x, (float)y};
+    const vec2_t p1_xy = vec2_from_vec3(p1);
+    const vec2_t p2_xy = vec2_from_vec3(p2);
+    const vec2_t p3_xy = vec2_from_vec3(p3);
+
+    const vec3_t weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
+
+    const float alpha = weights.x;
+    const float beta  = weights.y;
+    const float gamma = weights.z;
+
+    const float depth = 1.0f / (alpha*p1.z + beta*p2.z + gamma*p3.z);
+
+    const int z_index = SCREEN_WIDTH * y + x;
+    if (depth <= (*z_buffer)[z_index]) {
+        sdl_gfx_draw_pixel(gfx, (int)x, (int)y, color);
+        (*z_buffer)[z_index] = depth;
+    }
+}
+
+static void draw_pixel_phong(const sdl_gfx *gfx, float x, float y, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec3_t n1, vec3_t n2, vec3_t n3, uint32_t color, light_t light, z_buffer_t *z_buffer) {
+    if (is_point_outside_viewport((int)x, (int)y))
+        return;
+
+    const vec2_t p = (vec2_t){x, y};
+    const vec2_t p1_xy = vec2_from_vec3(p1);
+    const vec2_t p2_xy = vec2_from_vec3(p2);
+    const vec2_t p3_xy = vec2_from_vec3(p3);
+
+    const vec3_t weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
+
+    const float alpha = weights.x;
+    const float beta  = weights.y;
+    const float gamma = weights.z;
+
+    const float depth = 1.0f / (alpha*p1.z + beta*p2.z + gamma*p3.z);
+
+    const int z_index = SCREEN_WIDTH * y + x;
+    if (depth <= (*z_buffer)[z_index]) {
+        const vec3_t va = vec3_mul(vec3_mul(v1, p1.z), alpha);
+        const vec3_t vb = vec3_mul(vec3_mul(v2, p2.z), beta);
+        const vec3_t vc = vec3_mul(vec3_mul(v3, p3.z), gamma);
+        vec3_t interp_pos = vec3_mul(vec3_add(vec3_add(va, vb), vc), depth);
+
+        const vec3_t na = vec3_mul(n1, alpha);
+        const vec3_t nb = vec3_mul(n2, beta);
+        const vec3_t nc = vec3_mul(n3, gamma);
+        vec3_t interp_normal = vec3_normalize(vec3_add(vec3_add(na, nb), nc));
+
+        vec3_t light_vec = vec3_normalize(vec3_diff(light.position, interp_pos));
+        float diffuse = vec3_dot(interp_normal, light_vec);
+        float intensity = clamp(AMBIENT_LIGHT_INTENSITY_PHONG + diffuse * light.strength, 0.0f, 1.0f);
+
+        const uint32_t r = RED(color) * intensity;
+        const uint32_t g = GREEN(color) * intensity;
+        const uint32_t b = BLUE(color) * intensity;
+
+        sdl_gfx_draw_pixel(gfx, (int)x, (int)y, RGB(r,g,b));
+        (*z_buffer)[z_index] = depth;
+    }
+}
+
+static void draw_line(const sdl_gfx* gfx, const vec2_t a, const vec2_t b, const uint32_t color) {
+    const float d_x = b.x - a.x;
+    const float d_y = b.y - a.y;
+
+    const float longer_delta = fabsf(d_x) >= fabsf(d_y) ? fabsf(d_x) : fabsf(d_y);
+
+    const float inc_x = d_x / longer_delta;
+    const float inc_y = d_y / longer_delta;
+
+    float x = a.x;
+    float y = a.y;
+
+    for (int i = 0; i <= (int)longer_delta; ++i) {
+        sdl_gfx_draw_pixel(gfx, (int)x, (int)y, color);
+        x += inc_x;
+        y += inc_y;
+    }
+}
+
+static void draw_filled_triangle(const sdl_gfx *gfx, vec3_t p1, vec3_t p2, vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
+    sort_points(&p1, &p2, &p3);
+    vec3_floor_xy(&p1);
+    vec3_floor_xy(&p2);
+    vec3_floor_xy(&p3);
+
+    // Draw flat-bottom triangle
+    if (p2.y != p1.y) {
+        const float inv_slope1 = (p2.x - p1.x) / (p2.y - p1.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p1.y;
+        while (y <= p2.y) {
+            float x_start = p1.x + (y - p1.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_pixel(gfx, x, y, p1, p2, p3, color, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+
+    // Draw flat-top triangle
+    if (p3.y != p2.y) {
+        const float inv_slope1 = (p3.x - p2.x) / (p3.y - p2.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p2.y;
+        while (y <= p3.y) {
+            float x_start = p2.x + (y - p2.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_pixel(gfx, x, y, p1, p2, p3, color, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+}
+
+static void draw_filled_triangle_phong(const sdl_gfx *gfx, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, const vec3_t n1, const vec3_t n2, const vec3_t n3, const uint32_t color, const light_t light, z_buffer_t *z_buffer) {
+    sort_points_and_vertices(&p1, &p2, &p3, &v1, &v2, &v3);
+    vec3_floor_xy(&p1);
+    vec3_floor_xy(&p2);
+    vec3_floor_xy(&p3);
+
+    // Draw flat-bottom triangle
+    if (p2.y != p1.y) {
+        const float inv_slope1 = (p2.x - p1.x) / (p2.y - p1.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p1.y;
+        while (y <= p2.y) {
+            float x_start = p1.x + (y - p1.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+
+    // Draw flat-top triangle
+    if (p3.y != p2.y) {
+        const float inv_slope1 = (p3.x - p2.x) / (p3.y - p2.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p2.y;
+        while (y <= p3.y) {
+            float x_start = p2.x + (y - p2.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+}
+
 void draw_wireframe(
     const sdl_gfx* gfx,
     const vec3_t *vertices,
@@ -112,25 +311,6 @@ void draw_wireframe(
         draw_line(gfx, (vec2_t){p1.x, p1.y}, (vec2_t){p2.x, p2.y}, color);
         draw_line(gfx, (vec2_t){p2.x, p2.y}, (vec2_t){p3.x, p3.y}, color);
         draw_line(gfx, (vec2_t){p3.x, p3.y}, (vec2_t){p1.x, p1.y}, color);
-    }
-}
-
-void draw_line(const sdl_gfx* gfx, const vec2_t a, const vec2_t b, const uint32_t color) {
-    const float d_x = b.x - a.x;
-    const float d_y = b.y - a.y;
-
-    const float longer_delta = fabsf(d_x) >= fabsf(d_y) ? fabsf(d_x) : fabsf(d_y);
-
-    const float inc_x = d_x / longer_delta;
-    const float inc_y = d_y / longer_delta;
-
-    float x = a.x;
-    float y = a.y;
-
-    for (int i = 0; i <= (int)longer_delta; ++i) {
-        sdl_gfx_draw_pixel(gfx, (int)x, (int)y, color);
-        x += inc_x;
-        y += inc_y;
     }
 }
 
@@ -190,75 +370,28 @@ void draw_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const triangle
     }
 }
 
-void draw_filled_triangle(const sdl_gfx *gfx, vec3_t p1, vec3_t p2, vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
-    sort_points(&p1, &p2, &p3);
-    vec3_floor_xy(&p1);
-    vec3_floor_xy(&p2);
-    vec3_floor_xy(&p3);
+void draw_phong_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const vec3_t* normals, const triangle_t *tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t *proj_mat, const projection_type proj_type, z_buffer_t *z_buffer) {
+    for (int i = 0; i < tris_count; ++i) {
+        const triangle_t tri = tris[i];
 
-    // Draw flat-bottom triangle
-    if ((int)p2.y != (int)p1.y) {
-        const float inv_slope1 = (p2.x - p1.x) / (p2.y - p1.y);
-        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+        const vec3_t v1 = vertices[tri.v[0]];
+        const vec3_t v2 = vertices[tri.v[1]];
+        const vec3_t v3 = vertices[tri.v[2]];
 
-        for (int y = (int)p1.y; y <= (int)p2.y; y++) {
-            float x_start = p1.x + ((float)y - p1.y) * inv_slope1;
-            float x_end   = p1.x + ((float)y - p1.y) * inv_slope2;
+        const vec3_t n1 = normals[tri.n[0]];
+        const vec3_t n2 = normals[tri.n[1]];
+        const vec3_t n3 = normals[tri.n[2]];
 
-            if (x_start > x_end) {
-                const float temp = x_start;
-                x_start = x_end;
-                x_end = temp;
-            }
+        if (is_back_face(proj_type, v1, v2, v3))
+            continue;
 
-            for (int x = (int)x_start; x <= (int)x_end; x++) {
-                draw_pixel(gfx, x, y, p1, p2, p3, color, z_buffer);
-            }
-        }
-    }
+        const vec3_t p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3_t p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3_t p3 = project_to_screen(proj_type, proj_mat, v3);
 
-    // Draw flat-top triangle
-    if ((int)p3.y != (int)p2.y) {
-        const float inv_slope1 = (p3.x - p2.x) / (p3.y - p2.y);
-        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+        if (is_outside_frustum(p1, p2, p3))
+            continue;
 
-        for (int y = (int)p2.y; y <= (int)p3.y; y++) {
-            float x_start = p2.x + ((float)y - p2.y) * inv_slope1;
-            float x_end   = p1.x + ((float)y - p1.y) * inv_slope2;
-
-            if (x_start > x_end) {
-                const float temp = x_start;
-                x_start = x_end;
-                x_end = temp;
-            }
-
-            for (int x = (int)x_start; x <= (int)x_end; x++) {
-                draw_pixel(gfx, x, y, p1, p2, p3, color, z_buffer);
-            }
-        }
-    }
-}
-
-void draw_pixel(const sdl_gfx *gfx, const int x, const int y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
-    if (is_point_outside_viewport(x, y))
-        return;
-
-    const vec2_t p = (vec2_t){(float)x, (float)y};
-    const vec2_t p1_xy = vec2_from_vec3(p1);
-    const vec2_t p2_xy = vec2_from_vec3(p2);
-    const vec2_t p3_xy = vec2_from_vec3(p3);
-
-    const vec3_t weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
-
-    const float alpha = weights.x;
-    const float beta  = weights.y;
-    const float gamma = weights.z;
-
-    const float depth = 1.0f / (alpha*p1.z + beta*p2.z + gamma*p3.z);
-
-    const int z_index = SCREEN_WIDTH * y + x;
-    if (depth <= (*z_buffer)[z_index]) {
-        sdl_gfx_draw_pixel(gfx, x, y, color);
-        (*z_buffer)[z_index] = depth;
+        draw_filled_triangle_phong(gfx, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
     }
 }
