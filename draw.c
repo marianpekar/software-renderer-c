@@ -82,7 +82,7 @@ static float clamp(const float value, const float min, const float max) {
     return t > max ? max : t;
 }
 
-static void draw_pixel(const sdl_gfx *gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
+static void draw_pixel(const sdl_gfx* gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t* z_buffer) {
     if (is_point_outside_viewport((int)x, (int)y))
         return;
 
@@ -106,7 +106,7 @@ static void draw_pixel(const sdl_gfx *gfx, const float x, const float y, const v
     }
 }
 
-static void draw_pixel_phong(const sdl_gfx *gfx, float x, float y, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec3_t n1, vec3_t n2, vec3_t n3, uint32_t color, light_t light, z_buffer_t *z_buffer) {
+static void draw_pixel_phong(const sdl_gfx* gfx, float x, float y, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec3_t n1, vec3_t n2, vec3_t n3, uint32_t color, light_t light, z_buffer_t* z_buffer) {
     if (is_point_outside_viewport((int)x, (int)y))
         return;
 
@@ -167,7 +167,7 @@ static void draw_line(const sdl_gfx* gfx, const vec2_t a, const vec2_t b, const 
     }
 }
 
-static void draw_filled_triangle(const sdl_gfx *gfx, vec3_t p1, vec3_t p2, vec3_t p3, const uint32_t color, z_buffer_t *z_buffer) {
+static void draw_filled_triangle(const sdl_gfx* gfx, vec3_t p1, vec3_t p2, vec3_t p3, const uint32_t color, z_buffer_t* z_buffer) {
     sort_points(&p1, &p2, &p3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -224,7 +224,98 @@ static void draw_filled_triangle(const sdl_gfx *gfx, vec3_t p1, vec3_t p2, vec3_
     }
 }
 
-static void draw_filled_triangle_phong(const sdl_gfx *gfx, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, const vec3_t n1, const vec3_t n2, const vec3_t n3, const uint32_t color, const light_t light, z_buffer_t *z_buffer) {
+static void draw_texel_flat_shaded(const sdl_gfx* gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const vec2_t uv1, const vec2_t uv2, const  vec2_t uv3, const texture_t* texture, float intensity, z_buffer_t* z_buffer) {
+    if (is_point_outside_viewport((int)x, (int)y))
+        return;
+
+    const vec2_t p = (vec2_t){(float)x, (float)y};
+    const vec2_t p1_xy = vec2_from_vec3(p1);
+    const vec2_t p2_xy = vec2_from_vec3(p2);
+    const vec2_t p3_xy = vec2_from_vec3(p3);
+
+    const vec3_t weights = barycentric_weights(p1_xy, p2_xy, p3_xy, p);
+
+    const float alpha = weights.x;
+    const float beta  = weights.y;
+    const float gamma = weights.z;
+
+    const float depth = 1.0f / (alpha*p1.z + beta*p2.z + gamma*p3.z);
+
+    const int z_index = SCREEN_WIDTH * y + x;
+    if (depth <= (*z_buffer)[z_index]) {
+        const float interp_u = ((uv1.x * p1.z) * alpha + (uv2.x * p2.z) * beta + (uv3.x * p3.z) * gamma) * depth;
+        const float interp_v = ((uv1.y * p1.z) * alpha + (uv2.y * p2.z) * beta + (uv3.y * p3.z) * gamma) * depth;
+        const int tex_x = (int)(interp_u * (float)texture->width) & texture->width - 1;
+        const int tex_y = (int)(interp_v * (float)texture->height) & texture->height - 1;
+        const uint32_t tex = texture->pixels[tex_y * texture->width + tex_x];
+
+        const uint32_t r = RED(tex) * intensity;
+        const uint32_t g = GREEN(tex) * intensity;
+        const uint32_t b = BLUE(tex) * intensity;
+
+        sdl_gfx_draw_pixel(gfx, (int)x, (int)y, RGB(r,g,b));
+        (*z_buffer)[z_index] = depth;
+    }
+}
+
+static void draw_textured_triangle_flat_shaded(const sdl_gfx* gfx, vec3_t p1, vec3_t p2, vec3_t p3, vec2_t uv1, vec2_t uv2, vec2_t uv3, const texture_t* texture, z_buffer_t* z_buffer) {
+    sort_points_and_uvs(&p1, &p2, &p3, &uv1, &uv2, &uv3);
+    vec3_floor_xy(&p1);
+    vec3_floor_xy(&p2);
+    vec3_floor_xy(&p3);
+
+    // Draw flat-bottom triangle
+    if (p2.y != p1.y) {
+        const float inv_slope1 = (p2.x - p1.x) / (p2.y - p1.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p1.y;
+        while (y <= p2.y) {
+            float x_start = p1.x + (y - p1.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, 1.0f, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+
+    // Draw flat-top triangle
+    if (p3.y != p2.y) {
+        const float inv_slope1 = (p3.x - p2.x) / (p3.y - p2.y);
+        const float inv_slope2 = (p3.x - p1.x) / (p3.y - p1.y);
+
+        float y = p2.y;
+        while (y <= p3.y) {
+            float x_start = p2.x + (y - p2.y) * inv_slope1;
+            float x_end   = p1.x + (y - p1.y) * inv_slope2;
+
+            if (x_start > x_end) {
+                const float temp = x_start;
+                x_start = x_end;
+                x_end = temp;
+            }
+
+            float x = x_start;
+            while (x <= x_end) {
+                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, 1.0f, z_buffer);
+                x += 1.0f;
+            }
+            y += 1.0f;
+        }
+    }
+}
+
+static void draw_filled_triangle_phong(const sdl_gfx* gfx, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, const vec3_t n1, const vec3_t n2, const vec3_t n3, const uint32_t color, const light_t light, z_buffer_t* z_buffer) {
     sort_points_and_vertices(&p1, &p2, &p3, &v1, &v2, &v3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -283,8 +374,8 @@ static void draw_filled_triangle_phong(const sdl_gfx *gfx, vec3_t v1, vec3_t v2,
 
 void draw_wireframe(
     const sdl_gfx* gfx,
-    const vec3_t *vertices,
-    const triangle_t *tris,
+    const vec3_t* vertices,
+    const triangle_t* tris,
     const int tris_count,
     const uint32_t color,
     const mat4x4_t* proj_mat,
@@ -314,7 +405,7 @@ void draw_wireframe(
     }
 }
 
-void draw_unlit(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tris, int tris_count, uint32_t color, const mat4x4_t *proj_mat, projection_type proj_type, z_buffer_t *z_buffer) {
+void draw_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const uint32_t color, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -336,7 +427,7 @@ void draw_unlit(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tr
     }
 }
 
-void draw_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t *proj_mat, projection_type proj_type, z_buffer_t *z_buffer) {
+void draw_flat_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -370,7 +461,7 @@ void draw_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const triangle
     }
 }
 
-void draw_phong_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const vec3_t* normals, const triangle_t *tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t *proj_mat, const projection_type proj_type, z_buffer_t *z_buffer) {
+void draw_phong_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const vec3_t* normals, const triangle_t* tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -393,5 +484,31 @@ void draw_phong_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const vec3_t*
             continue;
 
         draw_filled_triangle_phong(gfx, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+    }
+}
+
+void draw_textured_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const vec2_t* uvs, const texture_t* texture, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
+    for (int i = 0; i < tris_count; ++i) {
+        const triangle_t tri = tris[i];
+
+        const vec3_t v1 = vertices[tri.v[0]];
+        const vec3_t v2 = vertices[tri.v[1]];
+        const vec3_t v3 = vertices[tri.v[2]];
+
+        const vec2_t uv1 = uvs[tri.uv[0]];
+        const vec2_t uv2 = uvs[tri.uv[1]];
+        const vec2_t uv3 = uvs[tri.uv[2]];
+
+        if (is_back_face(proj_type, v1, v2, v3))
+            continue;
+
+        const vec3_t p1 = project_to_screen(proj_type, proj_mat, v1);
+        const vec3_t p2 = project_to_screen(proj_type, proj_mat, v2);
+        const vec3_t p3 = project_to_screen(proj_type, proj_mat, v3);
+
+        if (is_outside_frustum(p1, p2, p3))
+            continue;
+
+        draw_textured_triangle_flat_shaded(gfx, p1, p2, p3, uv1, uv2, uv3, texture, z_buffer);
     }
 }

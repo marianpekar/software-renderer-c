@@ -7,6 +7,7 @@
 #include "inputs.h"
 #include "mesh.h"
 #include "sdl_gfx.h"
+#include "texture.h"
 #include "z_buffer.h"
 
 void apply_transformations(vec3_t* transformed, const vec3_t* original, const int count, const mat4x4_t* mat) {
@@ -24,6 +25,7 @@ int main(void) {
 
     //const mesh_t mesh = make_cube();
     const mesh_t mesh = load_mesh_from_obj("./assets/monkey.obj");
+    const texture_t texture = load_texture_from_file("./assets/uv_checker.png");
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
     const light_t light = make_light((vec3_t){0.0f, 0.0f, -3.0f}, (vec3_t){0.0f, 1.0f, 0.0f}, 1.0f);
 
@@ -31,7 +33,7 @@ int main(void) {
     vec3_t translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
-    const int rend_modes_count = 5;
+    const int rend_modes_count = 6;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
@@ -69,6 +71,9 @@ int main(void) {
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         switch (render_mode) {
+            case 5:
+                 draw_textured_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, &proj_mat, proj_type, z_buffer);
+                break;
             case 4:
                    draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
                 break;
