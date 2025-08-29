@@ -33,7 +33,7 @@ int main(void) {
     vec3_t translation = {0.0f, 0.0f, 0.0f};
     float scale = 1.0f;
 
-    const int rend_modes_count = 6;
+    const int rend_modes_count = 7;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
 
@@ -71,23 +71,26 @@ int main(void) {
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         switch (render_mode) {
+            case 6:
+                draw_textured_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, light, &proj_mat, proj_type, z_buffer);
+                break;
             case 5:
-                 draw_textured_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, &proj_mat, proj_type, z_buffer);
+                      draw_textured_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, &proj_mat, proj_type, z_buffer);
                 break;
             case 4:
-                   draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                        draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
                 break;
             case 3:
-                    draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                         draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
                 break;
             case 2:
-                          draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
+                               draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
                 break;
             case 1:
-                      draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
+                           draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
                 break;
             case 0:
-                      draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
+                           draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
                 break;
             default:
                 break;
