@@ -8,14 +8,14 @@ include(FetchContent)
 FetchContent_Declare(
         SDL3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-        GIT_TAG main
+        GIT_TAG release-3.2.20
 )
 FetchContent_MakeAvailable(SDL3)
 
 FetchContent_Declare(
         SDL3_image
         GIT_REPOSITORY https://github.com/libsdl-org/SDL_image.git
-        GIT_TAG main
+        GIT_TAG release-3.2.4
 )
 FetchContent_MakeAvailable(SDL3_image)
 
