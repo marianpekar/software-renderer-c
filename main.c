@@ -29,7 +29,7 @@ int main(void) {
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
 
     const light_t light = make_light((vec3_t){-4.0f, 0.0f, -3.0f}, (vec3_t){ 1.0f, 1.0f, 0.0f}, (vec4_t){1.0f, 0.0f, 0.0f, 1.0f});
-    const light_t light2 = make_light((vec3_t){4.0f, 0.0f, -3.0f}, (vec3_t){-1.0f, 1.0f, 0.0f}, (vec4_t){0.0f, 1.0f, 0.0f, 1.0f});
+    const light_t light2 = make_light((vec3_t){4.0f, 0.0f, -3.0f}, (vec3_t){-1.0f, -1.0f, 0.0f}, (vec4_t){0.0f, 1.0f, 0.0f, 1.0f});
     const light_t lights[] = { light, light2 };
     const int lights_count = 2;
 
