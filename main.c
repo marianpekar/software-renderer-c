@@ -27,7 +27,14 @@ int main(void) {
     const mesh_t mesh = load_mesh_from_obj("./assets/monkey.obj");
     const texture_t texture = load_texture_from_file("./assets/uv_checker.png");
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
-    const light_t light = make_light((vec3_t){0.0f, 0.0f, -3.0f}, (vec3_t){0.0f, 1.0f, 0.0f}, 1.0f);
+
+    const light_t light = make_light((vec3_t){-4.0f, 0.0f, -3.0f}, (vec3_t){ 1.0f, 1.0f, 0.0f}, (vec4_t){1.0f, 0.0f, 0.0f, 1.0f});
+    const light_t light2 = make_light((vec3_t){4.0f, 0.0f, -3.0f}, (vec3_t){-1.0f, 1.0f, 0.0f}, (vec4_t){0.0f, 1.0f, 0.0f, 1.0f});
+    const light_t lights[] = { light, light2 };
+    const int lights_count = 2;
+
+    const vec3_t ambient = { 0.2f, 0.2f, 0.2f };
+    const vec3_t ambient2 = { 0.1f, 0.1f, 0.2f };
 
     vec3_t rotation = {0.0f, 180.0f, 0.0f};
     vec3_t translation = {0.0f, 0.0f, 0.0f};
@@ -72,19 +79,19 @@ int main(void) {
 
         switch (render_mode) {
             case 7:
-                draw_textured_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, light, &proj_mat, proj_type, z_buffer);
+                draw_textured_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient2);
                 break;
             case 6:
-                 draw_textured_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, light, &proj_mat, proj_type, z_buffer);
+                 draw_textured_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient);
                 break;
             case 5:
                        draw_textured_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, &proj_mat, proj_type, z_buffer);
                 break;
             case 4:
-                         draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                         draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient2);
                 break;
             case 3:
-                          draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, light, &proj_mat, proj_type, z_buffer);
+                          draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient);
                 break;
             case 2:
                                 draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);

@@ -73,11 +73,6 @@ static bool is_point_outside_viewport(const int x, const int y) {
     return x < 0 || x >= SCREEN_WIDTH || y < 0 || y >= SCREEN_HEIGHT;
 }
 
-static float clamp(const float value, const float min, const float max) {
-    const float t = value < min ? min : value;
-    return t > max ? max : t;
-}
-
 static void draw_pixel(const sdl_gfx* gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const uint32_t color, z_buffer_t* z_buffer) {
     if (is_point_outside_viewport((int)x, (int)y))
         return;
@@ -102,7 +97,18 @@ static void draw_pixel(const sdl_gfx* gfx, const float x, const float y, const v
     }
 }
 
-static void draw_pixel_phong(const sdl_gfx* gfx, float x, float y, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec3_t n1, vec3_t n2, vec3_t n3, uint32_t color, light_t light, z_buffer_t* z_buffer) {
+static void draw_pixel_phong(
+    const sdl_gfx* gfx,
+    float x, float y,
+    vec3_t v1, vec3_t v2, vec3_t v3,
+    vec3_t p1, vec3_t p2, vec3_t p3,
+    vec3_t n1, vec3_t n2, vec3_t n3,
+    uint32_t color,
+    const light_t* lights,
+    const int lights_count,
+    z_buffer_t* z_buffer,
+    vec3_t ambient)
+{
     if (is_point_outside_viewport((int)x, (int)y))
         return;
 
@@ -131,13 +137,22 @@ static void draw_pixel_phong(const sdl_gfx* gfx, float x, float y, vec3_t v1, ve
         const vec3_t nc = vec3_mul(n3, gamma);
         vec3_t interp_normal = vec3_normalize(vec3_add(vec3_add(na, nb), nc));
 
-        vec3_t light_vec = vec3_normalize(vec3_diff(light.position, interp_pos));
-        float diffuse = vec3_dot(interp_normal, light_vec);
-        float intensity = clamp(AMBIENT_LIGHT_INTENSITY_PHONG + diffuse * light.strength, 0.0f, 1.0f);
+        vec3_t light_accum = { ambient.x, ambient.y, ambient.z };
+        for (int i = 0; i < lights_count; ++i) {
+            const light_t* light = &lights[i];
+            vec3_t light_vec = vec3_normalize(vec3_diff(light->position, interp_pos));
+            float diffuse = fmaxf(vec3_dot(interp_normal, light_vec), 0.0f);
+            light_accum.x += diffuse * light->color.x * light->color.w;
+            light_accum.y += diffuse * light->color.y * light->color.w;
+            light_accum.z += diffuse * light->color.z * light->color.w;
+        }
+        light_accum.x = fminf(light_accum.x, 1.0f);
+        light_accum.y = fminf(light_accum.y, 1.0f);
+        light_accum.z = fminf(light_accum.z, 1.0f);
 
-        const uint32_t r = RED(color) * intensity;
-        const uint32_t g = GREEN(color) * intensity;
-        const uint32_t b = BLUE(color) * intensity;
+        const uint32_t r = RED(color) * light_accum.x;
+        const uint32_t g = GREEN(color) * light_accum.y;
+        const uint32_t b = BLUE(color) * light_accum.z;
 
         sdl_gfx_draw_pixel(gfx, (int)x, (int)y, RGB(r,g,b));
         (*z_buffer)[z_index] = depth;
@@ -220,7 +235,15 @@ static void draw_filled_triangle(const sdl_gfx* gfx, vec3_t p1, vec3_t p2, vec3_
     }
 }
 
-static void draw_texel_flat_shaded(const sdl_gfx* gfx, const float x, const float y, const vec3_t p1, const vec3_t p2, const vec3_t p3, const vec2_t uv1, const vec2_t uv2, const  vec2_t uv3, const texture_t* texture, float intensity, z_buffer_t* z_buffer) {
+static void draw_texel_flat_shaded(
+    const sdl_gfx* gfx,
+    const float x, const float y,
+    const vec3_t p1, const vec3_t p2, const vec3_t p3,
+    const vec2_t uv1, const vec2_t uv2, const  vec2_t uv3,
+    const texture_t* texture,
+    const vec3_t light_accum,
+    z_buffer_t* z_buffer)
+{
     if (is_point_outside_viewport((int)x, (int)y))
         return;
 
@@ -245,16 +268,23 @@ static void draw_texel_flat_shaded(const sdl_gfx* gfx, const float x, const floa
         const int tex_y = (int)(interp_v * (float)texture->height) & texture->height - 1;
         const uint32_t tex = texture->pixels[tex_y * texture->width + tex_x];
 
-        const uint32_t r = RED(tex) * intensity;
-        const uint32_t g = GREEN(tex) * intensity;
-        const uint32_t b = BLUE(tex) * intensity;
+        const uint32_t r = RED(tex) * light_accum.x;
+        const uint32_t g = GREEN(tex) * light_accum.y;
+        const uint32_t b = BLUE(tex) * light_accum.z;
 
         sdl_gfx_draw_pixel(gfx, (int)x, (int)y, RGB(r,g,b));
         (*z_buffer)[z_index] = depth;
     }
 }
 
-static void draw_textured_triangle_flat_shaded(const sdl_gfx* gfx, vec3_t p1, vec3_t p2, vec3_t p3, vec2_t uv1, vec2_t uv2, vec2_t uv3, const texture_t* texture, const float intensity, z_buffer_t* z_buffer) {
+static void draw_textured_triangle_flat_shaded(
+    const sdl_gfx* gfx,
+    vec3_t p1, vec3_t p2, vec3_t p3,
+    vec2_t uv1, vec2_t uv2, vec2_t uv3,
+    const texture_t* texture,
+    const vec3_t light_accum,
+    z_buffer_t* z_buffer)
+{
     sort_points_and_uvs(&p1, &p2, &p3, &uv1, &uv2, &uv3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -278,7 +308,7 @@ static void draw_textured_triangle_flat_shaded(const sdl_gfx* gfx, vec3_t p1, ve
 
             float x = x_start;
             while (x <= x_end) {
-                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, intensity, z_buffer);
+                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, light_accum, z_buffer);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -303,7 +333,7 @@ static void draw_textured_triangle_flat_shaded(const sdl_gfx* gfx, vec3_t p1, ve
 
             float x = x_start;
             while (x <= x_end) {
-                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, intensity, z_buffer);
+                draw_texel_flat_shaded(gfx, x, y, p1, p2, p3, uv1, uv2, uv3, texture, light_accum, z_buffer);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -311,7 +341,17 @@ static void draw_textured_triangle_flat_shaded(const sdl_gfx* gfx, vec3_t p1, ve
     }
 }
 
-static void draw_filled_triangle_phong(const sdl_gfx* gfx, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, const vec3_t n1, const vec3_t n2, const vec3_t n3, const uint32_t color, const light_t light, z_buffer_t* z_buffer) {
+static void draw_filled_triangle_phong(
+    const sdl_gfx* gfx,
+    vec3_t v1, vec3_t v2, vec3_t v3,
+    vec3_t p1, vec3_t p2, vec3_t p3,
+    const vec3_t n1, const vec3_t n2, const vec3_t n3,
+    const uint32_t color,
+    const light_t* lights,
+    const int lights_count,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     sort_points_and_vertices(&p1, &p2, &p3, &v1, &v2, &v3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -335,7 +375,7 @@ static void draw_filled_triangle_phong(const sdl_gfx* gfx, vec3_t v1, vec3_t v2,
 
             float x = x_start;
             while (x <= x_end) {
-                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, lights, lights_count, z_buffer, ambient);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -360,7 +400,7 @@ static void draw_filled_triangle_phong(const sdl_gfx* gfx, vec3_t v1, vec3_t v2,
 
             float x = x_start;
             while (x <= x_end) {
-                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+                draw_pixel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, lights, lights_count, z_buffer, ambient);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -368,7 +408,19 @@ static void draw_filled_triangle_phong(const sdl_gfx* gfx, vec3_t v1, vec3_t v2,
     }
 }
 
-static void draw_texel_phong(const sdl_gfx* gfx, const float x, const float y, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec3_t n1, vec3_t n2, vec3_t n3, const vec2_t uv1, const vec2_t uv2, const  vec2_t uv3, const texture_t* texture, light_t light, z_buffer_t* z_buffer) {
+static void draw_texel_phong(
+    const sdl_gfx* gfx,
+    const float x, const float y,
+    vec3_t v1, vec3_t v2, vec3_t v3,
+    vec3_t p1, vec3_t p2, vec3_t p3,
+    vec3_t n1, vec3_t n2, vec3_t n3,
+    const vec2_t uv1, const vec2_t uv2, const vec2_t uv3,
+    const texture_t* texture,
+    const light_t* lights,
+    const int lights_count,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     if (is_point_outside_viewport((int)x, (int)y))
         return;
 
@@ -403,20 +455,40 @@ static void draw_texel_phong(const sdl_gfx* gfx, const float x, const float y, v
         const vec3_t nc = vec3_mul(n3, gamma);
         vec3_t interp_normal = vec3_normalize(vec3_add(vec3_add(na, nb), nc));
 
-        vec3_t light_vec = vec3_normalize(vec3_diff(light.position, interp_pos));
-        float diffuse = vec3_dot(interp_normal, light_vec);
-        float intensity = clamp(AMBIENT_LIGHT_INTENSITY_PHONG + diffuse * light.strength, 0.0f, 1.0f);
+        vec3_t light_accum = { ambient.x, ambient.y, ambient.z };
+        for (int i = 0; i < lights_count; ++i) {
+            const light_t* light = &lights[i];
+            vec3_t light_vec = vec3_normalize(vec3_diff(light->position, interp_pos));
+            float diffuse = fmaxf(vec3_dot(interp_normal, light_vec), 0.0f);
+            light_accum.x += diffuse * light->color.x * light->color.w;
+            light_accum.y += diffuse * light->color.y * light->color.w;
+            light_accum.z += diffuse * light->color.z * light->color.w;
+        }
+        light_accum.x = fminf(light_accum.x, 1.0f);
+        light_accum.y = fminf(light_accum.y, 1.0f);
+        light_accum.z = fminf(light_accum.z, 1.0f);
 
-        const uint32_t r = RED(tex) * intensity;
-        const uint32_t g = GREEN(tex) * intensity;
-        const uint32_t b = BLUE(tex) * intensity;
+        const uint32_t r = RED(tex) * light_accum.x;
+        const uint32_t g = GREEN(tex) * light_accum.y;
+        const uint32_t b = BLUE(tex) * light_accum.z;
 
         sdl_gfx_draw_pixel(gfx, (int)x, (int)y, RGB(r,g,b));
         (*z_buffer)[z_index] = depth;
     }
 }
 
-static void draw_textured_triangle_phong_shaded(const sdl_gfx* gfx, vec3_t v1, vec3_t v2, vec3_t v3, vec3_t p1, vec3_t p2, vec3_t p3, vec2_t uv1, vec2_t uv2, vec2_t uv3, const vec3_t n1, const vec3_t n2, const vec3_t n3, const texture_t* texture, const light_t light, z_buffer_t* z_buffer) {
+static void draw_textured_triangle_phong_shaded(
+    const sdl_gfx* gfx,
+    vec3_t v1, vec3_t v2, vec3_t v3,
+    vec3_t p1, vec3_t p2, vec3_t p3,
+    vec2_t uv1, vec2_t uv2, vec2_t uv3,
+    const vec3_t n1, const vec3_t n2, const vec3_t n3,
+    const texture_t* texture,
+    const light_t* lights,
+    const int lights_count,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     sort_points_vertices_and_uvs(&p1, &p2, &p3, &v1, &v2, &v3, &uv1, &uv2, &uv3);
     vec3_floor_xy(&p1);
     vec3_floor_xy(&p2);
@@ -440,7 +512,7 @@ static void draw_textured_triangle_phong_shaded(const sdl_gfx* gfx, vec3_t v1, v
 
             float x = x_start;
             while (x <= x_end) {
-                draw_texel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, uv1, uv2, uv3, texture, light, z_buffer);
+                draw_texel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, uv1, uv2, uv3, texture, lights, lights_count, z_buffer, ambient);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -465,7 +537,7 @@ static void draw_textured_triangle_phong_shaded(const sdl_gfx* gfx, vec3_t v1, v
 
             float x = x_start;
             while (x <= x_end) {
-                draw_texel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, uv1, uv2, uv3, texture, light, z_buffer);
+                draw_texel_phong(gfx, x, y, v1, v2, v3, p1, p2, p3, n1, n2, n3, uv1, uv2, uv3, texture, lights, lights_count, z_buffer, ambient);
                 x += 1.0f;
             }
             y += 1.0f;
@@ -482,8 +554,8 @@ void draw_wireframe(
     const uint32_t color,
     const mat4x4_t* proj_mat,
     const projection_type proj_type,
-    const bool cull_back_face
-    ) {
+    const bool cull_back_face)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -507,7 +579,16 @@ void draw_wireframe(
     }
 }
 
-void draw_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const uint32_t color, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
+void draw_unlit(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const triangle_t* tris,
+    const int tris_count,
+    const uint32_t color,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -529,7 +610,19 @@ void draw_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tr
     }
 }
 
-void draw_flat_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
+void draw_flat_shaded(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const triangle_t* tris,
+    const int tris_count,
+    const uint32_t color,
+    const light_t* lights,
+    const int lights_count,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -552,18 +645,40 @@ void draw_flat_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const triangle
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        float intensity = vec3_dot(cross_norm, light.direction);
-        intensity = clamp(intensity, 0.0f, 1.0f);
-        intensity = clamp(AMBIENT_LIGHT_INTENSITY + intensity * light.strength, 0.0f, 1.0f);
-        const uint32_t r = RED(color) * intensity;
-        const uint32_t g = GREEN(color) * intensity;
-        const uint32_t b = BLUE(color) * intensity;
+        vec3_t light_accum = { ambient.x, ambient.y, ambient.z };
+        for (int j = 0; j < lights_count; ++j) {
+            const light_t* light = &lights[j];
+            const float diffuse = fmaxf(0.0f, vec3_dot(cross_norm, light->direction));
+            light_accum.x += diffuse * light->color.x * light->color.w;
+            light_accum.y += diffuse * light->color.y * light->color.w;
+            light_accum.z += diffuse * light->color.z * light->color.w;
+        }
+        light_accum.x = fminf(light_accum.x, 1.0f);
+        light_accum.y = fminf(light_accum.y, 1.0f);
+        light_accum.z = fminf(light_accum.z, 1.0f);
+
+        const uint32_t r = RED(color) * light_accum.x;
+        const uint32_t g = GREEN(color) * light_accum.y ;
+        const uint32_t b = BLUE(color) * light_accum.z;
 
         draw_filled_triangle(gfx, p1, p2, p3, RGB(r,g,b), z_buffer);
     }
 }
 
-void draw_phong_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const vec3_t* normals, const triangle_t* tris, const int tris_count, const uint32_t color, const light_t light, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
+void draw_phong_shaded(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const vec3_t* normals,
+    const triangle_t* tris,
+    const int tris_count,
+    const uint32_t color,
+    const light_t* lights,
+    const int lights_count,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -585,11 +700,21 @@ void draw_phong_shaded(const sdl_gfx* gfx, const vec3_t* vertices, const vec3_t*
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        draw_filled_triangle_phong(gfx, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, light, z_buffer);
+        draw_filled_triangle_phong(gfx, v1, v2, v3, p1, p2, p3, n1, n2, n3, color, lights, lights_count, z_buffer, ambient);
     }
 }
 
-void draw_textured_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const triangle_t* tris, const int tris_count, const vec2_t* uvs, const texture_t* texture, const mat4x4_t* proj_mat, const projection_type proj_type, z_buffer_t* z_buffer) {
+void draw_textured_unlit(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const triangle_t* tris,
+    const int tris_count,
+    const vec2_t* uvs,
+    const texture_t* texture,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -611,11 +736,25 @@ void draw_textured_unlit(const sdl_gfx* gfx, const vec3_t* vertices, const trian
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        draw_textured_triangle_flat_shaded(gfx, p1, p2, p3, uv1, uv2, uv3, texture, 1.0f /* Unlit */, z_buffer);
+        const vec3_t light = {1.0f, 1.0f, 1.0f}; // unlit
+        draw_textured_triangle_flat_shaded(gfx, p1, p2, p3, uv1, uv2, uv3, texture, light, z_buffer);
     }
 }
 
-void draw_textured_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const triangle_t *tris, const int tris_count, const vec2_t *uvs, const texture_t *texture, const light_t light, const mat4x4_t *proj_mat, const projection_type proj_type, z_buffer_t *z_buffer) {
+void draw_textured_flat_shaded(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const triangle_t* tris,
+    const int tris_count,
+    const vec2_t* uvs,
+    const texture_t* texture,
+    const light_t* lights,
+    const int lights_count,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -642,15 +781,37 @@ void draw_textured_flat_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        float intensity = vec3_dot(cross_norm, light.direction);
-        intensity = clamp(intensity, 0.0f, 1.0f);
-        intensity = clamp(AMBIENT_LIGHT_INTENSITY + intensity * light.strength, 0.0f, 1.0f);
+        vec3_t light_accum = { ambient.x, ambient.y, ambient.z };
+        for (int j = 0; j < lights_count; ++j) {
+            const light_t* light = &lights[j];
+            const float diffuse = fmaxf(0.0f, vec3_dot(cross_norm, light->direction));
+            light_accum.x += diffuse * light->color.x * light->color.w;
+            light_accum.y += diffuse * light->color.y * light->color.w;
+            light_accum.z += diffuse * light->color.z * light->color.w;
+        }
+        light_accum.x = fminf(light_accum.x, 1.0f);
+        light_accum.y = fminf(light_accum.y, 1.0f);
+        light_accum.z = fminf(light_accum.z, 1.0f);
 
-        draw_textured_triangle_flat_shaded(gfx, p1, p2, p3, uv1, uv2, uv3, texture, intensity, z_buffer);
+        draw_textured_triangle_flat_shaded(gfx, p1, p2, p3, uv1, uv2, uv3, texture, light_accum, z_buffer);
     }
 }
 
-void draw_textured_phong_shaded(const sdl_gfx *gfx, const vec3_t *vertices, const vec3_t *normals, const triangle_t *tris, const int tris_count, const vec2_t *uvs, const texture_t *texture, const light_t light, const mat4x4_t *proj_mat, const projection_type proj_type, z_buffer_t *z_buffer) {
+void draw_textured_phong_shaded(
+    const sdl_gfx* gfx,
+    const vec3_t* vertices,
+    const vec3_t* normals,
+    const triangle_t* tris,
+    const int tris_count,
+    const vec2_t* uvs,
+    const texture_t* texture,
+    const light_t* lights,
+    const int lights_count,
+    const mat4x4_t* proj_mat,
+    const projection_type proj_type,
+    z_buffer_t* z_buffer,
+    const vec3_t ambient)
+{
     for (int i = 0; i < tris_count; ++i) {
         const triangle_t tri = tris[i];
 
@@ -676,6 +837,6 @@ void draw_textured_phong_shaded(const sdl_gfx *gfx, const vec3_t *vertices, cons
         if (is_outside_frustum(p1, p2, p3))
             continue;
 
-        draw_textured_triangle_phong_shaded(gfx, v1, v2, v3, p1, p2, p3, uv1, uv2, uv3, n1, n2, n3, texture, light, z_buffer);
+        draw_textured_triangle_phong_shaded(gfx, v1, v2, v3, p1, p2, p3, uv1, uv2, uv3, n1, n2, n3, texture, lights, lights_count, z_buffer, ambient);
     }
 }
