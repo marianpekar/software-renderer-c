@@ -50,12 +50,23 @@ int main(void) {
     z_buffer_t* z_buffer = make_z_buffer();
 
     Uint64 last_time = SDL_GetPerformanceCounter();
+    Uint64 fps_last_time = last_time;
+    int frames = 0;
+
 
     bool is_running = true;
     while (is_running) {
         const Uint64 current_time = SDL_GetPerformanceCounter();
         const float delta_time = (float)(current_time - last_time)/(float)SDL_GetPerformanceFrequency();
         last_time = current_time;
+
+        frames++;
+        if ((current_time - fps_last_time) > SDL_GetPerformanceFrequency()) {
+            float fps = (float)frames / ((float)(current_time - fps_last_time) / (float)SDL_GetPerformanceFrequency());
+            printf("FPS: %.0f\n", fps);
+            fps_last_time = current_time;
+            frames = 0;
+        }
 
         handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
 
