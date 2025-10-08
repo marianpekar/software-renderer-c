@@ -10,17 +10,17 @@ typedef struct {
 } triangle_t;
 
 typedef struct {
-    vec3_t* transformedVertices;
-    vec3_t* transformedNormals;
+    vec3_t* transformed_vertices;
+    vec3_t* transformed_normals;
     vec3_t* vertices;
     vec3_t* normals;
     vec2_t* uvs;
     triangle_t* triangles;
 
-    int vertexCount;
-    int normalCount;
-    int uvCount;
-    int triangleCount;
+    int vertex_count;
+    int normals_count;
+    int uvs_count;
+    int triangle_count;
 } mesh_t;
 
 mesh_t make_cube(void);

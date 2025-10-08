@@ -86,17 +86,17 @@ mesh_t load_mesh_from_obj(const char* filename) {
     fclose(f);
 
     mesh_t mesh = {0};
-    mesh.vertexCount   = v_count;
-    mesh.normalCount   = n_count;
-    mesh.uvCount       = uv_count;
-    mesh.triangleCount = t_count;
+    mesh.vertex_count   = v_count;
+    mesh.normals_count   = n_count;
+    mesh.uvs_count       = uv_count;
+    mesh.triangle_count = t_count;
 
     mesh.vertices            = vertices;
     mesh.normals             = normals;
     mesh.uvs                 = uvs;
     mesh.triangles           = triangles;
-    mesh.transformedVertices = calloc(v_count, sizeof(vec3_t));
-    mesh.transformedNormals  = calloc(n_count, sizeof(vec3_t));
+    mesh.transformed_vertices = calloc(v_count, sizeof(vec3_t));
+    mesh.transformed_normals  = calloc(n_count, sizeof(vec3_t));
 
     return mesh;
 }
@@ -104,17 +104,17 @@ mesh_t load_mesh_from_obj(const char* filename) {
 mesh_t make_cube(void) {
     mesh_t mesh = {0};
 
-    mesh.vertexCount   = 8;
-    mesh.normalCount   = 6;
-    mesh.uvCount       = 4;
-    mesh.triangleCount = 12;
+    mesh.vertex_count   = 8;
+    mesh.normals_count   = 6;
+    mesh.uvs_count       = 4;
+    mesh.triangle_count = 12;
 
-    mesh.vertices            = malloc(mesh.vertexCount   * sizeof(vec3_t));
-    mesh.normals             = malloc(mesh.normalCount   * sizeof(vec3_t));
-    mesh.uvs                 = malloc(mesh.uvCount       * sizeof(vec2_t));
-    mesh.triangles           = malloc(mesh.triangleCount * sizeof(triangle_t));
-    mesh.transformedVertices = malloc(mesh.vertexCount   * sizeof(vec3_t));
-    mesh.transformedNormals  = malloc(mesh.normalCount   * sizeof(vec3_t));
+    mesh.vertices            = malloc(mesh.vertex_count   * sizeof(vec3_t));
+    mesh.normals             = malloc(mesh.normals_count   * sizeof(vec3_t));
+    mesh.uvs                 = malloc(mesh.uvs_count       * sizeof(vec2_t));
+    mesh.triangles           = malloc(mesh.triangle_count * sizeof(triangle_t));
+    mesh.transformed_vertices = malloc(mesh.vertex_count   * sizeof(vec3_t));
+    mesh.transformed_normals  = malloc(mesh.normals_count   * sizeof(vec3_t));
 
     mesh.vertices[0] = (vec3_t){-1.0f, -1.0f, -1.0f};
     mesh.vertices[1] = (vec3_t){-1.0f,  1.0f, -1.0f};
