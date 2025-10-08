@@ -20,6 +20,7 @@ typedef struct {
 #define COLOR_BLACK RGB(0, 0, 0)
 #define COLOR_WHITE RGB(255, 255, 255)
 #define COLOR_GREEN RGB(0, 255, 0)
+#define COLOR_RED RGB(255, 0, 0)
 
 sdl_gfx* sdl_gfx_init(char window_title[], int width, int height);
 void sdl_gfx_render(const sdl_gfx* gfx);

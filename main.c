@@ -5,16 +5,9 @@
 #include "constants.h"
 #include "draw.h"
 #include "inputs.h"
-#include "mesh.h"
 #include "sdl_gfx.h"
-#include "texture.h"
 #include "z_buffer.h"
-
-void apply_transformations(vec3_t* transformed, const vec3_t* original, const int count, const mat4x4_t* mat) {
-    for (int i = 0; i < count; i++) {
-        transformed[i] = mat4_mul_vec3(mat, original[i]);
-    }
-}
+#include "model.h"
 
 int main(void) {
     const sdl_gfx* gfx = sdl_gfx_init("Software Renderer", SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -23,9 +16,10 @@ int main(void) {
         return 1;
     }
 
-    //const mesh_t mesh = make_cube();
-    const mesh_t mesh = load_mesh_from_obj("./assets/monkey.obj");
-    const texture_t texture = load_texture_from_file("./assets/uv_checker.png");
+    const model_t cube = load_model("./assets/cube.obj", "./assets/box.png", COLOR_WHITE, COLOR_GREEN);
+    const model_t monkey = load_model("./assets/monkey.obj", "./assets/uv_checker.png", COLOR_WHITE, COLOR_RED);
+    model_t models[] = { cube, monkey };
+
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
 
     const light_t light = make_light((vec3_t){-4.0f, 0.0f, -3.0f}, (vec3_t){ 1.0f, 1.0f, 0.0f}, (vec4_t){1.0f, 0.0f, 0.0f, 1.0f});
@@ -36,10 +30,6 @@ int main(void) {
     const vec3_t ambient = { 0.2f, 0.2f, 0.2f };
     const vec3_t ambient2 = { 0.1f, 0.1f, 0.2f };
 
-    vec3_t rotation = {0.0f, 180.0f, 0.0f};
-    vec3_t translation = {0.0f, 0.0f, 0.0f};
-    float scale = 1.0f;
-
     const int rend_modes_count = 8;
     int render_mode = rend_modes_count - 1;
     projection_type proj_type = PERSPECTIVE;
@@ -49,10 +39,18 @@ int main(void) {
 
     z_buffer_t* z_buffer = make_z_buffer();
 
+    int selected_model_idx = 0;
+    const int model_count = sizeof(models) / sizeof(models[0]);
+    model_t* selected_model;
+
+    for (int i = 0; i < model_count; ++i) {
+        model_t* model = &models[i];
+        apply_transformations(model, &camera);
+    }
+
     Uint64 last_time = SDL_GetPerformanceCounter();
     Uint64 fps_last_time = last_time;
     int frames = 0;
-
 
     bool is_running = true;
     while (is_running) {
@@ -68,19 +66,11 @@ int main(void) {
             frames = 0;
         }
 
-        handle_inputs(&translation, &rotation, &scale, &render_mode, rend_modes_count, &proj_type, &is_running, delta_time);
+        selected_model = &models[selected_model_idx];
 
-        const mat4x4_t trans_mat = make_translation_matrix(translation.x, translation.y, translation.z);
-        const mat4x4_t rot_mat   = make_rotation_matrix(rotation.x, rotation.y, rotation.z);
-        const mat4x4_t scale_mat = make_scale_matrix(scale, scale, scale);
+        handle_inputs(&selected_model->translation, &selected_model->rotation, &selected_model->scale, &render_mode, rend_modes_count, &selected_model_idx, model_count, &proj_type, &is_running, delta_time);
 
-        const mat4x4_t rs_mat    = mat4_mul(&rot_mat, &scale_mat);
-        const mat4x4_t model_mat = mat4_mul(&trans_mat, &rs_mat);
-        const mat4x4_t view_mat  = make_view_matrix(camera.position, camera.target);
-        const mat4x4_t mv_mat    = mat4_mul(&view_mat, &model_mat);
-
-        apply_transformations(mesh.transformedVertices, mesh.vertices, mesh.vertexCount, &mv_mat);
-        apply_transformations(mesh.transformedNormals, mesh.normals, mesh.normalCount, &mv_mat);
+        apply_transformations(selected_model, &camera);
 
         const mat4x4_t proj_mat = (proj_type == PERSPECTIVE) ? perspective_mat : ortho_mat;
 
@@ -88,33 +78,89 @@ int main(void) {
 
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
-        switch (render_mode) {
-            case 7:
-                draw_textured_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient2);
-                break;
-            case 6:
-                 draw_textured_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient);
-                break;
-            case 5:
-                       draw_textured_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, mesh.uvs, &texture, &proj_mat, proj_type, z_buffer);
-                break;
-            case 4:
-                         draw_phong_shaded(gfx, mesh.transformedVertices, mesh.transformedNormals, mesh.triangles, mesh.triangleCount, COLOR_WHITE, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient2);
-                break;
-            case 3:
-                          draw_flat_shaded(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, lights, lights_count, &proj_mat, proj_type, z_buffer, ambient);
-                break;
-            case 2:
-                                draw_unlit(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_WHITE, &proj_mat, proj_type, z_buffer);
-                break;
-            case 1:
-                            draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, false);
-                break;
-            case 0:
-                            draw_wireframe(gfx, mesh.transformedVertices, mesh.triangles, mesh.triangleCount, COLOR_GREEN, &proj_mat, proj_type, true);
-                break;
-            default:
-                break;
+        for (int i = 0; i < model_count; ++i) {
+            const model_t* model = &models[i];
+
+            switch (render_mode) {
+                case 7:
+                    draw_textured_phong_shaded(gfx,
+                        model->mesh.transformed_vertices, model->mesh.transformed_normals,
+                        model->mesh.triangles,model->mesh.triangle_count,
+                        model->mesh.uvs,
+                        &model->texture,
+                        lights, lights_count,
+                        &proj_mat, proj_type,
+                        z_buffer,
+                        ambient2);
+                    break;
+                case 6:
+                    draw_textured_flat_shaded(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->mesh.uvs, &model->texture,
+                        lights, lights_count,
+                        &proj_mat, proj_type,
+                        z_buffer,
+                        ambient);
+                    break;
+                case 5:
+                    draw_textured_unlit(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->mesh.uvs,
+                        &model->texture,
+                        &proj_mat, proj_type,
+                        z_buffer);
+                    break;
+                case 4:
+                    draw_phong_shaded(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.transformed_normals,
+                        model->mesh.triangles,
+                        model->mesh.triangle_count,
+                        model->color,
+                        lights, lights_count,
+                        &proj_mat, proj_type,
+                        z_buffer,
+                        ambient2);
+                    break;
+                case 3:
+                    draw_flat_shaded(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->color,
+                        lights, lights_count,
+                        &proj_mat, proj_type,
+                        z_buffer,
+                        ambient);
+                    break;
+                case 2:
+                    draw_unlit(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->color,
+                        &proj_mat, proj_type,
+                        z_buffer);
+                    break;
+                case 1:
+                    draw_wireframe(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->wire_color,
+                        &proj_mat, proj_type,
+                        false);
+                    break;
+                case 0:
+                    draw_wireframe(gfx,
+                        model->mesh.transformed_vertices,
+                        model->mesh.triangles, model->mesh.triangle_count,
+                        model->wire_color,
+                        &proj_mat, proj_type,
+                        true);
+                    break;
+                default:
+                    break;
+            }
         }
 
         sdl_gfx_render(gfx);

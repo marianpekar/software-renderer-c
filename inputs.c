@@ -1,7 +1,14 @@
 ﻿#include <SDL3/SDL.h>
 #include "inputs.h"
 
-void handle_inputs(vec3_t* translation, vec3_t* rotation, float* scale, int* render_mode, const int rend_modes_count, projection_type *proj_type, bool* is_running, const float delta_time) {
+void handle_inputs(
+    vec3_t* translation, vec3_t* rotation, float* scale,
+    int* render_mode, const int rend_modes_count,
+    int* selected_model, const int model_count,
+    projection_type *proj_type,
+    bool* is_running,
+    const float delta_time)
+{
     const bool* key_state = SDL_GetKeyboardState(NULL);
 
     const float linear_step = (key_state[SDL_SCANCODE_LSHIFT] != 0) ? 0.25f * delta_time : 1.0f * delta_time;
@@ -35,12 +42,20 @@ void handle_inputs(vec3_t* translation, vec3_t* rotation, float* scale, int* ren
 
         if (event.type == SDL_EVENT_KEY_DOWN) {
             switch (event.key.scancode) {
-                // Render modes
+                    // Render modes
                 case SDL_SCANCODE_LEFT:
                     *render_mode = (*render_mode + rend_modes_count - 1) % rend_modes_count;
                     break;
                 case SDL_SCANCODE_RIGHT:
                     *render_mode = (*render_mode + 1) % rend_modes_count;
+                    break;
+
+                    // Select model
+                case SDL_SCANCODE_UP:
+                    *selected_model = (*selected_model + model_count - 1) % model_count;
+                    break;
+                case SDL_SCANCODE_DOWN:
+                    *selected_model = (*selected_model + 1) % model_count;
                     break;
 
                     // Projection modes
