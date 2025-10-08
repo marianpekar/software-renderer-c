@@ -32,6 +32,7 @@ add_executable(software_renderer_c
         sort.c
         light.c
         texture.c
+        model.c
 )
 
 target_link_libraries(software_renderer_c PRIVATE
@@ -56,3 +57,9 @@ if (WIN32)
             $<TARGET_FILE_DIR:software_renderer_c>
     )
 endif()
+
+add_custom_command(TARGET software_renderer_c POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/assets"
+        "$<TARGET_FILE_DIR:software_renderer_c>/assets"
+)
