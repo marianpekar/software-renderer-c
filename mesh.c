@@ -132,10 +132,10 @@ mesh_t make_cube(void) {
     mesh.normals[4] = (vec3_t){ 0.0f,  1.0f,  0.0f};
     mesh.normals[5] = (vec3_t){ 0.0f, -1.0f,  0.0f};
 
-    mesh.uvs[0] = (vec2_t){0.0f, 0.0f};
-    mesh.uvs[1] = (vec2_t){0.0f, 1.0f};
-    mesh.uvs[2] = (vec2_t){1.0f, 1.0f};
-    mesh.uvs[3] = (vec2_t){1.0f, 0.0f};
+    mesh.uvs[0] = (vec2_t){1.0f, 1.0f};
+    mesh.uvs[1] = (vec2_t){1.0f, 0.0f};
+    mesh.uvs[2] = (vec2_t){0.0f, 0.0f};
+    mesh.uvs[3] = (vec2_t){0.0f, 1.0f};
 
     mesh.triangles[0]  = (triangle_t){{0,1,2}, {0,1,2}, {0,0,0}};
     mesh.triangles[1]  = (triangle_t){{0,2,3}, {0,2,3}, {0,0,0}};
