@@ -8,12 +8,19 @@
 static void parse_face(const char** tokens, triangle_t* tri) {
     for (int i = 0; i < 3; i++) {
         int v = 0, vt = 0, vn = 0;
-        sscanf(tokens[i+1], "%d/%d/%d", &v, &vt, &vn);
-        tri->v[i] = v - 1;
-        tri->uv[i] = vt - 1;
-        tri->n[i] = vn - 1;
+        if (sscanf(tokens[i+1], "%d/%d/%d", &v, &vt, &vn) == 3) {
+            tri->v[i] = v - 1;
+            tri->uv[i] = vt - 1;
+            tri->n[i] = vn - 1;
+        }
+        else if (sscanf(tokens[i+1], "%d//%d", &v, &vn) == 2) {
+            tri->v[i] = v - 1;
+            tri->uv[i] = 0;
+            tri->n[i] = vn - 1;
+        }
     }
 }
+
 
 static vec2_t parse_vec2(const char** tokens) {
     vec2_t v;
@@ -85,16 +92,23 @@ mesh_t load_mesh_from_obj(const char* filename) {
     }
     fclose(f);
 
+    if (uv_count == 0) {
+        uvs = malloc(sizeof(vec2_t));
+        uvs[0].x = 0.0f;
+        uvs[0].y = 0.0f;
+        uv_count = 1;
+    }
+
     mesh_t mesh = {0};
-    mesh.vertex_count   = v_count;
+    mesh.vertex_count    = v_count;
     mesh.normals_count   = n_count;
     mesh.uvs_count       = uv_count;
-    mesh.triangle_count = t_count;
+    mesh.triangle_count  = t_count;
 
-    mesh.vertices            = vertices;
-    mesh.normals             = normals;
-    mesh.uvs                 = uvs;
-    mesh.triangles           = triangles;
+    mesh.vertices             = vertices;
+    mesh.normals              = normals;
+    mesh.uvs                  = uvs;
+    mesh.triangles            = triangles;
     mesh.transformed_vertices = calloc(v_count, sizeof(vec3_t));
     mesh.transformed_normals  = calloc(n_count, sizeof(vec3_t));
 
@@ -104,15 +118,15 @@ mesh_t load_mesh_from_obj(const char* filename) {
 mesh_t make_cube(void) {
     mesh_t mesh = {0};
 
-    mesh.vertex_count   = 8;
+    mesh.vertex_count    = 8;
     mesh.normals_count   = 6;
     mesh.uvs_count       = 4;
-    mesh.triangle_count = 12;
+    mesh.triangle_count  = 12;
 
-    mesh.vertices            = malloc(mesh.vertex_count   * sizeof(vec3_t));
-    mesh.normals             = malloc(mesh.normals_count   * sizeof(vec3_t));
-    mesh.uvs                 = malloc(mesh.uvs_count       * sizeof(vec2_t));
-    mesh.triangles           = malloc(mesh.triangle_count * sizeof(triangle_t));
+    mesh.vertices             = malloc(mesh.vertex_count   * sizeof(vec3_t));
+    mesh.normals              = malloc(mesh.normals_count   * sizeof(vec3_t));
+    mesh.uvs                  = malloc(mesh.uvs_count       * sizeof(vec2_t));
+    mesh.triangles            = malloc(mesh.triangle_count * sizeof(triangle_t));
     mesh.transformed_vertices = malloc(mesh.vertex_count   * sizeof(vec3_t));
     mesh.transformed_normals  = malloc(mesh.normals_count   * sizeof(vec3_t));
 
