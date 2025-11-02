@@ -16,9 +16,13 @@ int main(void) {
         return 1;
     }
 
-    const model_t cube = load_model("./assets/cube.obj", "./assets/box.png", COLOR_WHITE, COLOR_GREEN);
-    const model_t monkey = load_model("./assets/monkey.obj", "./assets/uv_checker.png", COLOR_WHITE, COLOR_RED);
-    model_t models[] = { cube, monkey };
+    model_t cube = load_model("./assets/cube.obj", "./assets/box.png", COLOR_WHITE, COLOR_GREEN);
+    model_t monkey = load_model("./assets/monkey.obj", "./assets/uv_checker.png", COLOR_WHITE, COLOR_RED);
+    model_t* models[] = { &cube, &monkey };
+
+    cube.translation = (vec3_t) {-1.25f, 0.0f, 0.5f};
+    monkey.translation = (vec3_t) {1.5f, 0.0f, 0.5f};
+    monkey.rotation = (vec3_t) {180.0f, 0.0f, 0.0f};
 
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
 
@@ -44,7 +48,7 @@ int main(void) {
     model_t* selected_model;
 
     for (int i = 0; i < model_count; ++i) {
-        model_t* model = &models[i];
+        model_t* model = models[i];
         apply_transformations(model, &camera);
     }
 
@@ -53,6 +57,7 @@ int main(void) {
     int frames = 0;
 
     bool is_running = true;
+
     while (is_running) {
         const Uint64 current_time = SDL_GetPerformanceCounter();
         const float delta_time = (float)(current_time - last_time)/(float)SDL_GetPerformanceFrequency();
@@ -66,7 +71,7 @@ int main(void) {
             frames = 0;
         }
 
-        selected_model = &models[selected_model_idx];
+        selected_model = models[selected_model_idx];
 
         handle_inputs(&selected_model->translation, &selected_model->rotation, &selected_model->scale, &render_mode, rend_modes_count, &selected_model_idx, model_count, &proj_type, &is_running, delta_time);
 
@@ -79,7 +84,7 @@ int main(void) {
         sdl_gfx_clear(gfx, COLOR_BLACK);
 
         for (int i = 0; i < model_count; ++i) {
-            const model_t* model = &models[i];
+            const model_t* model = models[i];
 
             switch (render_mode) {
                 case 7:
