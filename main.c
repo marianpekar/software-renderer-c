@@ -25,9 +25,10 @@ int main(void) {
     monkey.rotation = (vec3_t) {180.0f, 0.0f, 0.0f};
 
     const camera_t camera = make_camera((vec3_t){0.0f, 0.0f, -3.0f});
+    const mat4x4_t view_mat  = make_view_matrix(camera.position, camera.target);
 
-    const light_t light = make_light((vec3_t){-4.0f, 0.0f, -3.0f}, (vec3_t){ 1.0f, 1.0f, 0.0f}, (vec4_t){1.0f, 0.0f, 0.0f, 1.0f});
-    const light_t light2 = make_light((vec3_t){4.0f, 0.0f, -3.0f}, (vec3_t){-1.0f, -1.0f, 0.0f}, (vec4_t){0.0f, 1.0f, 0.0f, 1.0f});
+    const light_t light = make_light((vec3_t){-2.0f, 2.0f, 1.0f}, (vec3_t){ 1.0f, 1.0f, 0.0f}, (vec4_t){1.0f, 0.0f, 0.0f, 1.0f}, view_mat);
+    const light_t light2 = make_light((vec3_t){2.0f, -2.0f, 1.0f}, (vec3_t){-1.0f, -1.0f, 0.0f}, (vec4_t){0.0f, 1.0f, 0.0f, 1.0f}, view_mat);
     const light_t lights[] = { light, light2 };
     const int lights_count = 2;
 
