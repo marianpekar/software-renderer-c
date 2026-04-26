@@ -54,8 +54,6 @@ int main(void) {
     }
 
     Uint64 last_time = SDL_GetPerformanceCounter();
-    Uint64 fps_last_time = last_time;
-    int frames = 0;
 
     bool is_running = true;
 
@@ -63,14 +61,6 @@ int main(void) {
         const Uint64 current_time = SDL_GetPerformanceCounter();
         const float delta_time = (float)(current_time - last_time)/(float)SDL_GetPerformanceFrequency();
         last_time = current_time;
-
-        frames++;
-        if ((current_time - fps_last_time) > SDL_GetPerformanceFrequency()) {
-            float fps = (float)frames / ((float)(current_time - fps_last_time) / (float)SDL_GetPerformanceFrequency());
-            printf("FPS: %.0f\n", fps);
-            fps_last_time = current_time;
-            frames = 0;
-        }
 
         selected_model = models[selected_model_idx];
 
